@@ -24,11 +24,13 @@ Next week, `/cardhand:run` reads the files and carries on.
 
 ## Try it in 30 seconds, no model needed
 
-The example is a finished first wave of a small data job. Copy it, let the script build the views, and open the dashboard:
+The example is a finished first wave of a small data job. In a clone of the repo, copy it to a scratch folder,
+let the script build the views, and open the dashboard:
 
-    cp -R examples/bike-share /tmp/bike-share && cd /tmp/bike-share
-    python3 /path/to/plugin/skills/start/scripts/cards.py status
-    open cards/dashboard.html        # xdg-open on Linux
+    git clone https://github.com/rajaxar/cardhand && cd cardhand
+    cp -R examples/bike-share /tmp/bike-share
+    python3 skills/start/scripts/cards.py --dir /tmp/bike-share/cards status
+    open /tmp/bike-share/cards/dashboard.html        # xdg-open on Linux
 
 This runs only the standard-library script. It calls no model and costs no credits.
 
@@ -158,6 +160,9 @@ Without the plugin, you can use just this script and the card files.
 
 It runs seven free checks (a throwaway queue lifecycle, lints, name and version, idle-size budget, no stray files, and
 `claude plugin validate`). The last one is skipped if the `claude` command is not on your path. No model is called.
+
+Every push runs these in CI; `validate` is skipped there, so CI covers six of the seven.
+[![checks](https://github.com/rajaxar/cardhand/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/rajaxar/cardhand/actions/workflows/checks.yml)
 
 ## Portability, license, changelog
 
