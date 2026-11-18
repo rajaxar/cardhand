@@ -14,3 +14,4 @@ First public version.
   note covers worker dispatch on each.
 - An optional checks recipe (`recipes/checks.md`) and a worked example (`examples/bike-share/`, invented data).
 - Free checks in `tests/check.py`: lifecycle, lints, name and version, idle-size budget, no stray files, `claude plugin validate`.
+- Run end to end on Codex CLI across two sessions: plan, first wave, one worker per card, no drift.

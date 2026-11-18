@@ -102,6 +102,9 @@ A card is the handoff. Any agent that can read a card and write a Result can run
 continue it in Codex, or give a single card to Cursor. The plan, the results and the dashboard stay in your folder, so
 changing tools does not restart the work.
 
+It has been run end to end on Codex CLI across two sessions: the plan, the first wave and one worker per card, with no
+drift.
+
 That is the point: the workflow is yours, not the vendor's. Different agents can work the same project without a gap
 between them.
 
