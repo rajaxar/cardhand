@@ -8,10 +8,6 @@ Install it in Claude Code:
     /plugin marketplace add rajaxar/cardhand
     /plugin install cardhand@cardhand
 
-Or try it from a local copy:
-
-    claude --plugin-dir /path/to/plugin
-
 Then, in any folder:
 
     /cardhand:start find out why our nightly export is slow    # one-line idea: it posts its plan and starts
@@ -19,12 +15,12 @@ Then, in any folder:
     /cardhand:run                                              # works the queue; run it again after a break or in a new session
     /cardhand:status                                           # what needs you, what is running, what was learned
 
-You get a `cards/` folder: a brief, one Markdown file per card, and generated views. Close the laptop.
-Next week, `/cardhand:run` reads the files and carries on.
-
 ![The cardhand dashboard, Overview tab, rendered from the bike-share example](docs/dashboard-overview.png)
 
 *The dashboard's Overview tab, from `examples/bike-share/` (invented data).*
+
+You get a `cards/` folder: a brief, one Markdown file per card, and generated views. Close the laptop.
+Next week, `/cardhand:run` reads the files and carries on.
 
 ## Try it in 30 seconds, no model needed
 
@@ -42,6 +38,12 @@ This runs only the standard-library script. It calls no model and costs no credi
 **No runtime beyond Python 3** (standard library) for the queue script. Without it, the files can be edited by hand.
 
 Claude Code only for now. Other harnesses: design notes only, not tested.
+
+## Run it from a local copy
+
+For development, or to try a checkout without adding a marketplace:
+
+    claude --plugin-dir /path/to/plugin
 
 ## What a card looks like
 
@@ -126,6 +128,7 @@ its card and the card's inputs. This is a static estimate, not a measurement fro
 
 | Tool kind | What they do well | Where cardhand differs |
 |---|---|---|
+| Long chat sessions | Everything in context, nothing to set up | cardhand keeps the plan in project files, not in the chat |
 | Methodology plugins for coding | Plans, test-first, review, polished skills | cardhand has no required process and is not tied to software |
 | Task-graph tools | Many concurrent agents, atomic claims | cardhand is Markdown plus one script, with no database |
 | Native agent task lists | Built in, with dependencies | cardhand is plain files that are meant to outlast a session |
