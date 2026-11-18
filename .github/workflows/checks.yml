@@ -1,0 +1,26 @@
+name: checks
+
+# The seven free checks from tests/check.py: standard library only, no model, no secrets.
+# `claude plugin validate` SKIPs on a runner without the `claude` binary, so CI covers 6 of
+# the 7 checks; the seventh stays a local check (`claude plugin validate .` in a checkout).
+on:
+  push:
+  pull_request:
+
+# Read-only: checkout and the checks need nothing else.
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      # 3.13 comes from the runner's preinstalled toolcache; the action only downloads a
+      # build if the image stops shipping one.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Seven free checks
+        run: PYTHONDONTWRITEBYTECODE=1 python3 tests/check.py
