@@ -615,7 +615,7 @@ def cmd_claim(args, root):
         card.save()
         os.makedirs(os.path.join(root, "scratch", card.id), exist_ok=True)
     project, name = os.path.dirname(root), os.path.basename(root)
-    print("# effort {}: start one fresh background agent named card-{} with this prompt:\n".format(
+    print("# effort {}: start one fresh agent for card {} with this prompt:\n".format(
         group[0].get("effort", "standard"), batch.replace("+", "-")))
     if len(group) == 1:
         print(PROMPT.format(id=batch, project=project, root=name, card=rel(group[0].path, root)))

@@ -67,6 +67,7 @@ Then file the wave's check-in with `--checkin --after <the wave's ids>`: a summa
 
 Last, run `python3 cards/cards.py status`. Tell the user where the brief is (`cards/BRIEF.md`) if they want to read along, that `cards/dashboard.html` shows progress live, and which cards start now. Go straight into the run skill.
 
-## On Claude Code
+## Finding the script
 
-If `SCRIPT` does not resolve, use `${CLAUDE_PLUGIN_ROOT}/skills/start/scripts/cards.py`.
+If `SCRIPT` does not resolve, look for `skills/start/scripts/cards.py` in the folder your harness reports for this skill.
+After `init`, always use `cards/cards.py`. Never install anything.

@@ -7,7 +7,7 @@ PLUGIN_DIR defaults to the folder above this file. Prints one PASS, FAIL or SKIP
 (detail lines are indented) and exits 1 if any check fails.
 
 Checks: smoke (every command in SPEC 4 against cards.py in a temp dir, plus each example queue), harness lint, claims lint,
-name and version, load budget (SPEC 2.2), and `claude plugin validate`.
+name and version (both manifests, plus the run harness note's size), load budget (SPEC 2.2), and `claude plugin validate`.
 """
 import glob
 import json
@@ -37,6 +37,7 @@ CAPS = [
     ("worker prompt plus RULES", 2200),
 ]
 HEAVIEST_CAP = 20000
+HARNESS_NOTE_CAP = 3000  # skills/run/references/harness.md: a note, not a second manual
 
 HARNESS_WORDS = ["haiku", "sonnet", "opus", "TaskStop", "CLAUDE_PLUGIN_ROOT", "subagent_type", "Claude"]
 CLAIM_PHRASES = ["thin orchestrator", "survives compaction", "unique"]
@@ -560,6 +561,7 @@ def check_claims_lint():
 def check_name_version():
     bad = []
     pj = os.path.join(PLUGIN, ".claude-plugin", "plugin.json")
+    root_pj = os.path.join(PLUGIN, "plugin.json")
     mj = os.path.join(PLUGIN, ".claude-plugin", "marketplace.json")
     try:
         manifest = json.loads(read(pj))
@@ -571,6 +573,23 @@ def check_name_version():
         bad.append("cards.py has no VERSION constant (or %s is missing)" % rel(CARDS))
     elif code.group(1) != version:
         bad.append("plugin.json version %s != cards.py VERSION %s" % (version, code.group(1)))
+    if os.path.isfile(root_pj):  # Agent Plugins root manifest, read by Codex, Cursor and Copilot
+        try:
+            portable = json.loads(read(root_pj))
+        except ValueError as err:
+            bad.append("plugin.json (root): %s" % err)
+        else:
+            for key in ("name", "version"):
+                if key not in portable:
+                    bad.append("root plugin.json has no %s" % key)
+                elif portable[key] != manifest.get(key):
+                    bad.append("root manifest and Claude manifest disagree on %s: %s != %s"
+                               % (key, portable[key], manifest.get(key)))
+    note = os.path.join(PLUGIN, "skills", "run", "references", "harness.md")
+    if not os.path.isfile(note):
+        bad.append("missing %s (the run skill's on-another-harness note)" % rel(note))
+    elif size(note) > HARNESS_NOTE_CAP:
+        bad.append("%s is %d, cap %d" % (rel(note), size(note), HARNESS_NOTE_CAP))
     if os.path.isfile(mj):
         try:
             market = json.loads(read(mj))
@@ -589,7 +608,10 @@ def check_name_version():
             if m.group(1) != name:
                 bad.append("%s: %s is not /%s:" % (rel(p), m.group(0), name))
     bad = list(dict.fromkeys(bad))
-    return not bad, ["name %s, version %s, %d slash references" % (name, version, refs)] + bad
+    head = "name %s, version %s, %d slash references" % (name, version, refs)
+    if os.path.isfile(note):
+        head += ", harness note %d B cap %d" % (size(note), HARNESS_NOTE_CAP)
+    return not bad, [head] + bad
 
 
 # ---------------------------------------------------------------- load budget

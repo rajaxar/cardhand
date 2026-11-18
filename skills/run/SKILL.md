@@ -77,12 +77,13 @@ Settings are plain words: "run fewer at once" sets `slots` (default 4), "run the
 `batch` to 1. Edit `cards/settings.json` and add a `DECISIONS.md` line. To check a claim, file a card tagged `check` that depends on
 its target and re-derives the claim. For spec-then-build, file a "Spec approved" card that build cards `depend` on.
 
+## On another harness
+
+Read `references/harness.md` once per session: how to start a fresh agent, notice it stopped, and what to do with no
+subagents. If your tool list disagrees with it, trust the tool list. Never fork: a worker must start fresh.
+
 ## On Claude Code
 
-- Start each worker as a background general-purpose agent named `card-<id>`, with the printed prompt exactly. Never a fork: a fork
-  inherits your context, and workers must start fresh.
-- Map `claim`'s effort word to a model: `light` is `haiku`, `standard` is `sonnet`, `deep` is `opus`.
-- Stop workers with TaskStop.
-- Workers report when they finish, which wakes you. A missed report is harmless, because the card file is the truth.
-- If `scripts/cards.py` is not found in this skill's folder (Claude Code prints "Base directory for this skill"), use
-  `${CLAUDE_PLUGIN_ROOT}/skills/start/scripts/cards.py`. After `init`, always use `cards/cards.py`.
+- Start each worker as a background general-purpose agent named `card-<id>`; never a fork. Map `effort`: `light` is `haiku`,
+  `standard` is `sonnet`, `deep` is `opus`. Stop workers with TaskStop.
+- If this skill's folder does not resolve, the script is `${CLAUDE_PLUGIN_ROOT}/skills/start/scripts/cards.py`.
