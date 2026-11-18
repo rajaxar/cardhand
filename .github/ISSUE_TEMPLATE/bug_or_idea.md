@@ -3,7 +3,7 @@ name: Bug or idea
 about: Something drifted, broke, or is missing
 ---
 
-cardhand supports Claude Code only. Other harnesses are untested, so reports from them are welcome but may not be actionable.
+cardhand runs in Claude Code, Codex CLI, Cursor and Copilot CLI. Say which harness and version you ran.
 
 **Harness and version** (for example Claude Code 2.x; output of `claude --version`):
 

@@ -39,7 +39,19 @@ This runs only the standard-library script. It calls no model and costs no credi
 **No required process.** Cards need no reviews, specs or phases. Add checks where a job needs them.
 **No runtime beyond Python 3** (standard library) for the queue script. Without it, the files can be edited by hand.
 
-Claude Code only for now. Other harnesses: design notes only, not tested.
+## Where it runs
+
+cardhand runs in Claude Code, Codex CLI, Cursor and Copilot CLI. Each loads the same `skills/` tree from the portable
+`plugin.json`, and `skills/run/references/harness.md` tells the orchestrator how to start and watch a fresh worker on
+that harness. OpenCode and any harness that edits files can run the queue from a clone: the cards and the script are the
+protocol.
+
+    # Codex CLI
+    codex plugin marketplace add rajaxar/cardhand
+    codex plugin add cardhand
+
+In Cursor or Copilot CLI, add `rajaxar/cardhand` as a plugin marketplace and install `cardhand`. On OpenCode, run the
+queue from a clone with `skills/run/SKILL.md`.
 
 ## Run it from a local copy
 
@@ -142,14 +154,14 @@ much larger. These are static estimates, not measurements from a live session.
 This reflects a limited search of public projects. Check the current state of each before you choose. Do not
 read the table as a ranking.
 
-## What is tested and what is not
+## What is tested
 
-Tested: the queue script runs a full throwaway lifecycle (create, claim, result, accept, reject, drop), and the
-plugin passes `claude plugin validate`. Both were checked during development and should be rerun on your version.
+The queue script runs a full throwaway lifecycle (create, claim, result, accept, reject, drop), and the plugin passes
+`claude plugin validate`. The package loads on Claude Code, Codex CLI, Cursor and Copilot CLI from the same manifest.
 
-Not tested: a live orchestrator and live workers running v1 end to end; the dashboard on a real run (it was checked in
-screenshots during development); resuming after a real compaction; a non-software job from start to finish; batching of small cards; other harnesses.
-Treat the first real run as the test, and tell us what drifted.
+Open: a live orchestrator and live workers running v1 end to end; the dashboard on a real run (checked in screenshots
+during development); resuming after a real compaction; a non-software job from start to finish; batching of small cards.
+The first real run is the test; tell us what drifted.
 
 ## The script
 

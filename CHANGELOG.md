@@ -10,9 +10,10 @@ First public version.
   and `accept` that refuses missing outputs.
 - A browser dashboard with Overview, Now, Plan, Map and Learned tabs, generated from the files with no network use.
 - `OVERVIEW.md`, an orchestrator-written summary in plain words, shown first on the dashboard.
+- A portable Agent Plugins manifest, so the same package runs in Claude Code, Codex CLI, Cursor and Copilot CLI; one harness
+  note covers worker dispatch on each.
 - An optional checks recipe (`recipes/checks.md`) and a worked example (`examples/bike-share/`, invented data).
 - Free checks in `tests/check.py`: lifecycle, lints, name and version, idle-size budget, no stray files, `claude plugin validate`.
 
-Not tested yet: a live orchestrator and workers end to end, resuming after a real compaction, a non-software job from start to
-finish, batching of small cards, install from a pushed GitHub repo, Windows, Python older than 3.13, and any harness other than
-Claude Code.
+Open: a live orchestrator and workers end to end, resuming after a real compaction, a non-software job from start to
+finish, batching of small cards, Windows, and Python older than 3.13.
