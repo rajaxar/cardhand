@@ -450,6 +450,27 @@ class Smoke:
         rc, out = self.run(other, "--dir", os.path.join(other, "work-cards"), "init")
         self.ok("H6: init works with --dir", rc == 0 and os.path.isdir(os.path.join(other, "work-cards", "queue")), out)
 
+    def wave_counts(self, root):
+        """A dropped card is closed, not done: the wave header must not count it as done (B24)."""
+        cwd = self.project(root, "waves")
+        first = self.new(cwd, "Finished work", "--effort", "light")
+        gone = self.new(cwd, "Ruled out work", "--effort", "light")
+        self.run(cwd, "drop", gone, "not needed")  # dropped first, so both cards land in wave 1
+        self.run(cwd, "claim", first)
+        self.finish(cwd, first)
+        rc, out = self.run(cwd, "accept", first)
+        self.ok("wave counts: the done card accepts", rc == 0, out)
+        try:
+            row = json.loads(read(os.path.join(cwd, "cards", "status.json")))["waves"][0]
+        except (OSError, ValueError, KeyError, IndexError) as err:
+            self.ok("wave counts: status.json has wave 1", False, str(err))
+            return
+        self.ok("wave counts: a dropped card is not counted as done",
+                row.get("done") == 1 and row.get("dropped") == 1 and row.get("total") == 2, str(row))
+        status = read(os.path.join(cwd, "cards", "STATUS.md"))
+        self.ok("wave counts: STATUS.md says done and ruled out apart",
+                "## Wave 1: 1 of 2 done, 1 ruled out" in status, status[:400])
+
     def examples(self, root):
         for src in sorted(glob.glob(os.path.join(PLUGIN, "examples", "*"))):
             name = "example " + os.path.basename(src)
@@ -476,7 +497,7 @@ def check_smoke():
     smoke = Smoke()
     root = tempfile.mkdtemp(prefix="cards-smoke-")
     try:
-        for section in (smoke.lifecycle, smoke.checkin, smoke.settings, smoke.robustness, smoke.overview, smoke.overview_flags, smoke.fixes, smoke.examples):
+        for section in (smoke.lifecycle, smoke.checkin, smoke.settings, smoke.robustness, smoke.overview, smoke.overview_flags, smoke.fixes, smoke.wave_counts, smoke.examples):
             try:
                 section(root)
             except Exception as err:  # a crash is a failure, and later sections still run

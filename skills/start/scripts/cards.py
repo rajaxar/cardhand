@@ -909,7 +909,8 @@ def status_data(root, cards):
         members = [c for c in cards.values() if waves[c.id] == n]
         mark = [c for c in sorted(members, key=lambda c: c.number) if c.summary]
         wave_rows.append({"n": n, "summary": mark[-1].id if mark else None,
-                          "done": sum(1 for c in members if c.status in CLOSED), "total": len(members)})
+                          "done": sum(1 for c in members if c.status == "done"),
+                          "dropped": sum(1 for c in members if c.status == "dropped"), "total": len(members)})
     high = [c for c in cards.values() if PRIORITIES.get(c.get("priority", "P1"), 1) < 2]
     checkpoint = next((c for c in sorted(cards.values(), key=lambda c: c.number)
                        if c.human and c.status not in CLOSED), None)
@@ -947,7 +948,8 @@ def overview_data(root, cards):
     if state is None:
         return None
     text, written, closed, placeholder = state
-    return {"text": text[:OVERVIEW_CAP], "updated": written, "stale": closed > 0, "placeholder": placeholder}
+    return {"text": text[:OVERVIEW_CAP], "updated": written, "stale": closed > 0, "closed": closed,
+            "placeholder": placeholder}
 
 
 def area_rows(cards):
@@ -1099,7 +1101,9 @@ def write_status(root, cards):
     rows = data["cards"]
     counts = ", ".join("{} {}".format(len(by[s]), s) for s in STATUSES if by[s])
     current = data["waves"][-1]
-    lines = ["# Status", "", "## Wave {}: {} of {} done".format(current["n"], current["done"], current["total"]), "",
+    lines = ["# Status: {}".format(data["project"]), "", "## Wave {}: {} of {} done{}".format(
+        current["n"], current["done"], current["total"],
+        ", {} ruled out".format(current["dropped"]) if current["dropped"] else ""), "",
              "Updated {}. {} cards: {}.".format(now()[:16], len(cards), counts or "none"),
              "Live view: open `dashboard.html` in this folder in a browser.",
              "Big picture in plain English: `OVERVIEW.md`.", ""]
@@ -1126,8 +1130,9 @@ def write_status(root, cards):
     for w in data["waves"]:
         open_ids = [r["id"] for r in rows if r["wave"] == w["n"] and r["status"] not in CLOSED]
         tail = "; open: {}{}".format(", ".join(open_ids[:6]), " +{}".format(len(open_ids) - 6) if len(open_ids) > 6 else "") if open_ids else ""
-        plan_rows.append("- Wave {}{}: {} of {} done{}{}".format(
+        plan_rows.append("- Wave {}{}: {} of {} done{}{}{}".format(
             w["n"], " (current)" if w["n"] == data["wave"] else "", w["done"], w["total"],
+            ", {} ruled out".format(w["dropped"]) if w["dropped"] else "",
             " (summary {})".format(w["summary"]) if w["summary"] else "", tail))
     if data["later"]:
         plan_rows += ["", "### Later", ""] + ["- " + item for item in data["later"]]
