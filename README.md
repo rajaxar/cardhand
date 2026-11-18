@@ -52,7 +52,8 @@ to date.
 
 ![The cardhand dashboard, Overview tab, rendered from the bike-share example](docs/dashboard-overview.png)
 
-*The dashboard, from the bike-share example (invented data).*
+*The dashboard, from the bike-share example (invented data). The repo includes the finished example: clone it and open
+`examples/bike-share/cards/dashboard.html` in a browser.*
 
 **Best for:** research, data work, and long jobs where the plan changes as you learn.
 **Not for:** one-off edits (just ask), or software features where a coding plugin already fits.
