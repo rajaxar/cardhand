@@ -123,8 +123,11 @@ works and files the next wave itself. Your feedback, whenever it comes, goes to 
 ## The cost of having it installed
 
 Idle, the plugin adds under 1 KB of skill names and descriptions (about 680 bytes), which is an estimate of about 170 tokens
-(characters divided by four, plus or minus 30%). A skill body loads only when you use it. A worker reads a short prompt, `RULES.md`,
-its card and the card's inputs. This is a static estimate, not a measurement from a live session.
+(characters divided by four, plus or minus 30%). A skill body loads only when you use it.
+
+One card dispatch reads about 3.3 KB of the plugin's own text (the prompt, `RULES.md`, the card and its inputs), an estimate of
+roughly 830 tokens, or about 0.5k–1.1k with the ±30% and normal card-size variation. Your own card inputs are extra and can be
+much larger. These are static estimates, not measurements from a live session.
 
 ## Where it fits
 
