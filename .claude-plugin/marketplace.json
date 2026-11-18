@@ -1,0 +1,8 @@
+{
+  "name": "cardhand",
+  "description": "Marketplace for the cardhand plugin.",
+  "owner": { "name": "rajaxar" },
+  "plugins": [
+    { "name": "cardhand", "description": "Run a task as a queue of card files: a fresh subagent does each card, writes the result to disk and exits, and the queue grows as the work teaches you things.", "source": "./" }
+  ]
+}
