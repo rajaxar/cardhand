@@ -14,6 +14,3 @@ First public version.
   note covers worker dispatch on each.
 - An optional checks recipe (`recipes/checks.md`) and a worked example (`examples/bike-share/`, invented data).
 - Free checks in `tests/check.py`: lifecycle, lints, name and version, idle-size budget, no stray files, `claude plugin validate`.
-
-Open: a live orchestrator and workers end to end, resuming after a real compaction, a non-software job from start to
-finish, batching of small cards, Windows, and Python older than 3.13.

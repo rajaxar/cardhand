@@ -34,8 +34,8 @@ let the script build the views, and open the dashboard:
 
 This runs only the standard-library script. It calls no model and costs no credits.
 
-**Good for:** research, data digging, long jobs where the plan changes as you learn.
-**Weak fit:** one-shot edits (just ask), and pure feature work where a coding-methodology plugin already fits.
+**Best for:** research, data digging, long jobs where the plan changes as you learn.
+**Not for:** one-shot edits (just ask), and pure feature work where a coding-methodology plugin already fits.
 **No required process.** Cards need no reviews, specs or phases. Add checks where a job needs them.
 **No runtime beyond Python 3** (standard library) for the queue script. Without it, the files can be edited by hand.
 
@@ -50,14 +50,8 @@ protocol.
     codex plugin marketplace add rajaxar/cardhand
     codex plugin add cardhand
 
-In Cursor or Copilot CLI, add `rajaxar/cardhand` as a plugin marketplace and install `cardhand`. On OpenCode, run the
-queue from a clone with `skills/run/SKILL.md`.
-
-## Run it from a local copy
-
-For development, or to try a checkout without adding a marketplace:
-
-    claude --plugin-dir /path/to/plugin
+In Cursor or Copilot CLI, add `rajaxar/cardhand` as a plugin marketplace and install `cardhand`. For development, use
+`claude --plugin-dir /path/to/plugin`.
 
 ## What a card looks like
 
@@ -92,54 +86,29 @@ The full folder, including a dropped card and a "Ruled out" answer, is in `examp
 
 A tiny job is done directly, with one sentence and no files. Say "cards" if you want it tracked anyway.
 
-## What it puts in your project
+## What it creates
 
-```
-cards/
-  BRIEF.md       goal, done when, not doing, unknowns, ideas for later
-  RULES.md       what every worker must follow; add your own project rules at the bottom
-  OVERVIEW.md    the orchestrator's plain-words summary, shown first on the dashboard
-  STATUS.md      generated summary
-  dashboard.html live view: open it in a browser, it refreshes itself
-  status.json    the same data, for your own tools
-  cards.py       the queue script (standard-library Python 3.7 or later)
-  queue/         one Markdown file per card
-  scratch/       one folder per card for its output files
-  view/          generated pieces of the dashboard
-```
+One `cards/` folder: `BRIEF.md` and `RULES.md` (the plan and the rules), `OVERVIEW.md` (the plain-words big picture), one
+Markdown file per card in `queue/`, one output folder per card in `scratch/`, `cards.py` (the queue script), and a
+self-refreshing `dashboard.html`. `STATUS.md`, `status.json`, `status.js` and `view/` are generated. Commit the Markdown
+and `scratch/`; ignore the generated files.
 
-`DECISIONS.md` and `settings.json` appear when first needed. If you use git, commit `BRIEF.md`, `RULES.md`, `OVERVIEW.md`,
-`DECISIONS.md`, `queue/` and `scratch/`. Ignore `view/`, `status.js` and `status.json`, which are regenerated.
+Add your own rules at the bottom of `RULES.md`. One line turns on a test gate, for example `check_cmd: pytest -q`. For
+independent re-checks, copy `recipes/checks.md` to `cards/recipes/checks.md` and add the line it shows.
 
-The dashboard updates whenever the orchestrator touches the queue, because the script rebuilds its data on each command.
-A worker's progress shows up at the next command, not the instant it is written.
+## How the queue works
 
-Add your own rules at the bottom of `RULES.md`. One line is enough to turn on a test gate, for example `check_cmd: pytest -q`:
-the orchestrator runs it before accepting a card and sends the card back if it fails.
+A card is ready when everything in `depends_on` is done or dropped. Ready cards run by priority, then oldest first. A
+worker can propose a new card and the orchestrator files it, so the queue grows from the work. Work moves in waves: at
+the end of a wave the orchestrator posts what works and starts the next.
 
-## Optional checks
+## The cost
 
-Independent re-checks are off by default. If a job needs them, copy `recipes/checks.md` from this plugin to `cards/recipes/checks.md`
-and add this line to `cards/RULES.md`: `Cards tagged check: follow cards/recipes/checks.md.`
+Idle, the plugin adds about 680 bytes of skill names and descriptions, about 170 tokens. A skill body loads only when you
+use it.
 
-## How the queue is served
-
-A card is ready when everything in its `depends_on` is done or dropped. Ready cards run highest
-priority first. A card counts as high as anything waiting on it, and ties go to the oldest card.
-Cards proposed by workers start at P2. The orchestrator moves the most useful ones into the next wave itself, and the rest wait until you ask.
-The run skill is meant to stop when the brief's "done when" lines are met; this stop is untested in a live run.
-
-Work moves in waves toward a first version, then the next. At the end of a wave the orchestrator posts what
-works and files the next wave itself. Your feedback, whenever it comes, goes to the top of the queue.
-
-## The cost of having it installed
-
-Idle, the plugin adds under 1 KB of skill names and descriptions (about 680 bytes), which is an estimate of about 170 tokens
-(characters divided by four, plus or minus 30%). A skill body loads only when you use it.
-
-One card dispatch reads about 3.3 KB of the plugin's own text (the prompt, `RULES.md`, the card and its inputs), an estimate of
-roughly 830 tokens, or about 0.5k–1.1k with the ±30% and normal card-size variation. Your own card inputs are extra and can be
-much larger. These are static estimates, not measurements from a live session.
+One card dispatch reads about 3.3 KB of the plugin's own text: the prompt, `RULES.md`, the card and its inputs. That is
+about 830 tokens. Your own card inputs are extra and can be larger.
 
 ## Where it fits
 
@@ -149,37 +118,22 @@ much larger. These are static estimates, not measurements from a live session.
 | Methodology plugins for coding | Plans, test-first, review, polished skills | cardhand has no required process and is not tied to software |
 | Task-graph tools | Many concurrent agents, atomic claims | cardhand is Markdown plus one script, with no database |
 | Native agent task lists | Built in, with dependencies | cardhand is plain files that are meant to outlast a session |
-| Unattended loops | Grind until a spec is done | cardhand keeps going on its own, but is meant to stop when the brief's "done when" lines are met and report what it learned |
 
-This reflects a limited search of public projects. Check the current state of each before you choose. Do not
-read the table as a ranking.
+## Without the plugin
 
-## What is tested
-
-The queue script runs a full throwaway lifecycle (create, claim, result, accept, reject, drop), and the plugin passes
-`claude plugin validate`. The package loads on Claude Code, Codex CLI, Cursor and Copilot CLI from the same manifest.
-
-Open: a live orchestrator and live workers running v1 end to end; the dashboard on a real run (checked in screenshots
-during development); resuming after a real compaction; a non-software job from start to finish; batching of small cards.
-The first real run is the test; tell us what drifted.
-
-## The script
-
-`python3 cards/cards.py --help` lists the commands. You can run the queue by hand with them:
-`init`, `new`, `depend`, `ready`, `claim`, `result`, `accept`, `reject`, `retry`, `answer`, `drop`, `priority`, `check`, `status`.
-Without the plugin, you can use just this script and the card files.
+`python3 cards/cards.py --help` lists the commands: `init`, `new`, `depend`, `ready`, `claim`, `result`, `accept`,
+`reject`, `retry`, `answer`, `drop`, `priority`, `check`, `status`. You can run the queue by hand with them, or use just
+the script and the card files.
 
 ## Run the checks
 
     PYTHONDONTWRITEBYTECODE=1 python3 tests/check.py
 
-It runs seven free checks (a throwaway queue lifecycle, lints, name and version, idle-size budget, no stray files, and
-`claude plugin validate`). The last one is skipped if the `claude` command is not on your path. No model is called.
+Seven free checks: a throwaway queue lifecycle, lints, name and version, idle-size budget, no stray files, and
+`claude plugin validate` locally. No model is called. Every push runs the free checks in CI.
 
-Every push runs these in CI; `validate` is skipped there, so CI covers six of the seven.
 [![checks](https://github.com/rajaxar/cardhand/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/rajaxar/cardhand/actions/workflows/checks.yml)
 
-## Portability, license, changelog
+## License, changelog
 
-Portability: see the top of this page. License: MIT (see `LICENSE`). Changes: see `CHANGELOG.md`.
-Bugs and ideas: open an issue and say which harness and version you ran.
+MIT (see `LICENSE`). Changes: see `CHANGELOG.md`. Bugs and ideas: open an issue and say which harness and version you ran.
