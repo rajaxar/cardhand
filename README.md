@@ -3,6 +3,9 @@
 Give a long job to a queue of cards. A new agent takes one card, writes the answer to disk, and exits. The queue grows
 as the work teaches it something.
 
+The workflow lives outside the agent. The plan, the cards and every result are files in your project, so you can start
+in Claude Code, continue in Codex, or hand one card to Cursor without losing the thread. No vendor holds the plan.
+
 You don't need to write code. Install it once, describe the job in chat, and steer when it asks.
 
 ## Install
@@ -92,6 +95,15 @@ generated views current.
 A card runs when the cards it depends on are done. Ready cards run most important first. When a card teaches the agent
 something, it can add a new card. Work moves in waves; each wave ends with a short report and the next wave.
 
+## Not tied to one agent
+
+A card is the handoff. Any agent that can read a card and write a Result can run it. Start a project in Claude Code,
+continue it in Codex, or give a single card to Cursor. The plan, the results and the dashboard stay in your folder, so
+changing tools does not restart the work.
+
+That is the point: the workflow is yours, not the vendor's. Different agents can work the same project without a gap
+between them.
+
 ## The cost
 
 Idle, the plugin adds about 680 bytes of skill names and descriptions, about 170 tokens. A skill body loads only when you
@@ -104,6 +116,7 @@ about 830 tokens. Your own card inputs are extra and can be larger.
 
 | Tool kind | What they do well | Where cardhand differs |
 |---|---|---|
+| Agent lock-in | The plan lives in one vendor's memory or task list | cardhand keeps the workflow in files you own, so you can change agents without starting over |
 | Long chats | Everything stays in the conversation | cardhand keeps the plan in files, not in the chat |
 | Coding plugins | Plans, tests, review | cardhand has no required process and is not only for code |
 | Task trackers | Coordination for many agents | cardhand is Markdown and one small script, with no database |
