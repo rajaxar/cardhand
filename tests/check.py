@@ -7,7 +7,8 @@ PLUGIN_DIR defaults to the folder above this file. Prints one PASS, FAIL or SKIP
 (detail lines are indented) and exits 1 if any check fails.
 
 Checks: smoke (every command in SPEC 4 against cards.py in a temp dir, plus each example queue), harness lint, claims lint,
-name and version (both manifests, plus the run harness note's size), load budget (SPEC 2.2), and `claude plugin validate`.
+name and version (both manifests, plus the run harness note's size), load budget (SPEC 2.2), no debris (git-ignored paths
+are skipped), and `claude plugin validate`.
 """
 import glob
 import json
@@ -437,17 +438,22 @@ class Smoke:
         c = self.new(cwd, "Check it", "--for", "D2")
         h = self.new(cwd, "Pick a name", "--human", "--for", "D3")
         self.ok("new --for writes the key, upper-cased", re.search(r"(?m)^for: D1$", self.text(cwd, a)) is not None, self.text(cwd, a)[:300])
-        self.ok("new --human writes a For you template", all(x in self.text(cwd, h) for x in ("## For you", "What I need:", "Why it matters:", "How:")), self.text(cwd, h)[:400])
+        self.ok("new --human writes a For you template", all(x in self.text(cwd, h) for x in ("## For you", "What I need:", "Why it matters:", "How:", "Background:")), self.text(cwd, h)[:400])
         rc, out = self.run(cwd, "check")
         self.ok("check: a human card with no What I need line is flagged", "foryou  %s" % h in out, out)
         self.run(cwd, "status")
         data = json.loads(read(os.path.join(cwd, "cards", "status.json")))
         row = {r["id"]: r for r in data["cards"]}
-        self.ok("status.json: an unfilled template reads as empty strings", row[h]["for_you"] == {"need": "", "why": "", "how": "", "means": ""}, str(row[h]["for_you"]))
+        self.ok("status.json: an unfilled template reads as empty strings", row[h]["for_you"] == {"need": "", "why": "", "how": "", "means": "", "background": ""}, str(row[h]["for_you"]))
         self.ok("status.json: for_goal per card", row[a]["for_goal"] == "D1" and row[h]["for_goal"] == "D3" and row[c]["for_goal"] == "D2", str([row[x]["for_goal"] for x in (a, b, c, h)]))
         path = self.card(cwd, h)
         text = read(path)
-        text = re.sub(r"(?s)## For you\n.*?\n\n", "## For you\nWhat I need: Pick a name for the tool.\nWhy it matters: The name goes on the first release.\nHow: Choose one of the three on the list; about 2 minutes.\n\n", text, count=1)
+        three = "## For you\nWhat I need: Pick a name for the tool.\nWhy it matters: The name goes on the first release.\nHow: Choose one of the three on the list; about 2 minutes.\n"
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(re.sub(r"(?s)## For you\n.*?\n\n", lambda _: three + "\n", text, count=1))
+        rc, out = self.run(cwd, "check")
+        self.ok("check: a human card with the three lines but no Background is flagged", "foryou  %s" % h in out and "Background" in out, out)
+        text = re.sub(r"(?s)## For you\n.*?\n\n", lambda _: three + "Background: We are building a small tool.\nIts first version works,\n  and it needs a name.\nAfter you pick one, it ships.\n\n", text, count=1)
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
         rc, out = self.run(cwd, "check")
@@ -456,6 +462,11 @@ class Smoke:
         data = json.loads(read(os.path.join(cwd, "cards", "status.json")))
         row = {r["id"]: r for r in data["cards"]}
         self.ok("status.json: for_you holds the three lines", row[h]["for_you"]["need"] == "Pick a name for the tool." and row[h]["for_you"]["how"].startswith("Choose one") and row[h]["for_you"]["why"].startswith("The name"), str(row[h]["for_you"]))
+        self.ok("status.json: Background is read as one paragraph across lines", row[h]["for_you"]["background"] == "We are building a small tool. Its first version works, and it needs a name. After you pick one, it ships.", str(row[h]["for_you"]))
+        self.ok("status.json: waiting_since is set on a card that needs the user and only there", isinstance(row[h].get("waiting_since"), (int, float)) and row[a].get("waiting_since") is None, str(row[h].get("waiting_since")))
+        self.ok("status.json: unblocks names the waiting card by title and the goal by text",
+                row[a].get("unblocks") == {"cards": [{"id": b, "title": "Build more"}], "more": 0, "goals": [{"id": "D1", "text": "First thing works."}]}, str(row[a].get("unblocks")))
+        self.ok("status.json: unblocks leaves out a met goal", row[c].get("unblocks") == {"cards": [], "more": 0, "goals": []}, str(row[c].get("unblocks")))
         self.ok("STATUS.md: Needs you shows the plain need", "Pick a name for the tool." in read(os.path.join(cwd, "cards", "STATUS.md")))
         goals = {g["id"]: g for g in data.get("goals", [])}
         self.ok("status.json: goals lists each D line", sorted(goals) == ["D1", "D2", "D3"] and goals["D1"]["text"] == "First thing works." and goals["D3"]["text"] == "(assumed) Third thing works.", str(data.get("goals"))[:300])
@@ -575,6 +586,62 @@ class Smoke:
         self.ok("wave counts: STATUS.md says done and ruled out apart",
                 "## Wave 1: 1 of 2 done, 1 ruled out" in status, status[:400])
 
+    def concepts(self, root):
+        """`## Concepts` in cards and cards/CONCEPTS.md: parsing, merging by term, overrides, unexplained links (B33)."""
+        cwd = self.project(root, "ideas")
+        a = self.new(cwd, "Older card")
+        b = self.new(cwd, "Newer card")
+        self.set_result(cwd, a, "Used overlap.\nNot checked: nothing known.\n\n## Concepts\n"
+                        "- Jaccard: Share of items two lists have in common.\n  - why: We hoped to match lists with it.\n"
+                        "  - verdict: ruled out, the lists are too short\n  - links: Cosine similarity (replaced by), Overlap ratio (a kind of)\n"
+                        "- **Cosine similarity**: Angle between two count vectors.\n  - verdict: in use - it works on short lists\n")
+        self.set_result(cwd, b, "Tried again.\nNot checked: nothing known.\n\n## Concepts\n"
+                        "- jaccard: Overlap divided by union.\n  - verdict: testing, trying longer lists\n"
+                        "- Typo: A term with a made-up verdict.\n  - verdict: maybe later\n")
+        for cid, day in ((a, "01"), (b, "02")):
+            self.set_fm(cwd, cid, "status", "done")
+            self.set_fm(cwd, cid, "finished", "2026-01-%s 10:00:00 +0000" % day)
+        rc, out = self.run(cwd, "check")
+        self.ok("concepts: check flags a verdict that is not one of the four", 'concept %s "Typo": verdict' % b in out and "Jaccard" not in out, out)
+        self.run(cwd, "status")
+        data = json.loads(read(os.path.join(cwd, "cards", "status.json")))
+        ideas = {e["name"].lower(): e for e in data.get("concepts", [])}
+        keys = {"name", "meaning", "why", "verdict", "reason", "links", "cards", "updated", "curated", "unexplained"}
+        self.ok("concepts: every entry has the full key set", ideas and all(set(e) == keys for e in ideas.values()), str(data.get("concepts"))[:300])
+        cos = ideas.get("cosine similarity", {})
+        self.ok("concepts: a term, its meaning, verdict and reason are parsed", cos.get("name") == "Cosine similarity" and cos.get("meaning") == "Angle between two count vectors."
+                and cos.get("verdict") == "in use" and cos.get("reason") == "it works on short lists" and cos.get("cards") == [a], str(cos))
+        jac = ideas.get("jaccard", {})
+        self.ok("concepts: one entry per term, merged case-insensitively, newest card wins field by field",
+                jac.get("name") == "Jaccard" and jac.get("meaning") == "Overlap divided by union." and jac.get("verdict") == "testing"
+                and jac.get("reason") == "trying longer lists" and jac.get("why") == "We hoped to match lists with it." and jac.get("cards") == [a, b], str(jac))
+        self.ok("concepts: links keep their label and point at the entry's name",
+                jac.get("links") == [{"to": "Cosine similarity", "label": "replaced by"}, {"to": "Overlap ratio", "label": "a kind of"}], str(jac.get("links")))
+        unx = ideas.get("overlap ratio", {})
+        self.ok("concepts: a link to a term with no entry appears, marked unexplained", unx.get("unexplained") is True and unx.get("verdict") == "" and unx.get("cards") == [], str(unx))
+        self.ok("concepts: an unknown verdict reads as open, its words kept as the reason", ideas.get("typo", {}).get("verdict") == "open" and ideas["typo"].get("reason") == "maybe later", str(ideas.get("typo")))
+        rows = {r["id"]: r for r in data["cards"]}
+        self.ok("concepts: the Result stops before ## Concepts", "Jaccard" not in rows[a]["result"] and rows[a]["outcome"] == "Used overlap.", rows[a]["result"][:200])
+        self.ok("STATUS.md: Key ideas lists each term with its verdict", "- Cosine similarity (in use): Angle between two count vectors." in read(os.path.join(cwd, "cards", "STATUS.md")))
+        with open(os.path.join(cwd, "cards", "CONCEPTS.md"), "w", encoding="utf-8") as f:
+            f.write("# Key ideas\n\n- JACCARD: The orchestrator's plain meaning.\n  - verdict: ruled out, short lists make it jump around\n  - links: Cosine similarity (replaced by)\n")
+        self.run(cwd, "status")
+        data = json.loads(read(os.path.join(cwd, "cards", "status.json")))
+        ideas = {e["name"].lower(): e for e in data.get("concepts", [])}
+        jac = ideas.get("jaccard", {})
+        self.ok("concepts: CONCEPTS.md wins over every card for the same term, and keeps what it does not set",
+                jac.get("name") == "JACCARD" and jac.get("meaning") == "The orchestrator's plain meaning." and jac.get("verdict") == "ruled out"
+                and jac.get("curated") is True and jac.get("why") == "We hoped to match lists with it." and jac.get("cards") == [a, b], str(jac))
+        self.ok("concepts: links set in CONCEPTS.md replace the cards' links", jac.get("links") == [{"to": "Cosine similarity", "label": "replaced by"}] and "overlap ratio" not in ideas, str(jac.get("links")))
+        self.ok("concepts: CONCEPTS.md opens in the dashboard", "cards/CONCEPTS.md" in (data.get("files") or {}), str(sorted(data.get("files") or {})))
+        os.remove(os.path.join(cwd, "cards", "CONCEPTS.md"))
+        for cid in (a, b):
+            path = self.card(cwd, cid)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(re.sub(r"(?ms)^## Concepts\n.*?(?=^## |\Z)", "", read(path)))
+        self.run(cwd, "status")
+        self.ok("concepts: an empty list without any", json.loads(read(os.path.join(cwd, "cards", "status.json"))).get("concepts") == [], "")
+
     def examples(self, root):
         for src in sorted(glob.glob(os.path.join(PLUGIN, "examples", "*"))):
             name = "example " + os.path.basename(src)
@@ -589,10 +656,20 @@ class Smoke:
             try:
                 data = json.loads(read(os.path.join(cwd, "cards", "status.json")))
                 self.ok(name + ": status.json lists every card", sorted(c["id"] for c in data["cards"]) == ids, str(ids))
-                keys = ("overview", "areas", "key_path", "decisions", "goals")
+                keys = ("overview", "areas", "key_path", "decisions", "goals", "concepts")
                 self.ok(name + ": status.json has the overview keys", all(k in data for k in keys), str(sorted(data)))
-                self.ok(name + ": status.json has the For you keys", all(set(c.get("for_you", {})) == {"need", "why", "how", "means"} and "for_goal" in c for c in data["cards"])
+                self.ok(name + ": status.json has the For you keys", all(set(c.get("for_you", {})) == {"need", "why", "how", "means", "background"} and "for_goal" in c
+                                                                                and set(c.get("unblocks", {})) == {"cards", "more", "goals"} and "waiting_since" in c for c in data["cards"])
                         and all(set(g) == {"id", "text", "met", "open", "done", "next"} for g in data["goals"]) and isinstance(data["overview"].get("since"), list), str(data["goals"])[:200])
+                you = [c for c in data["cards"] if c["column"] == "you"]
+                self.ok(name + ": every card that needs the user has a Background and a waiting time", you and all(c["for_you"]["background"] and c["waiting_since"] for c in you), str([c["id"] for c in you]))
+                ideas = data.get("concepts") or []
+                explained = [e for e in ideas if not e["unexplained"]]
+                names = {e["name"] for e in ideas}
+                self.ok(name + ": 5 to 8 explained key ideas, each with a verdict, linked to real entries",
+                        5 <= len(explained) <= 8 and all(e["verdict"] in ("in use", "ruled out", "testing", "open") and e["meaning"] for e in explained)
+                        and all(ln["to"] in names for e in ideas for ln in e["links"]) and any(e["links"] for e in explained), str([(e["name"], e["verdict"]) for e in ideas]))
+                self.ok(name + ": key ideas include an orchestrator entry and an unexplained link", any(e["curated"] for e in ideas) and any(e["unexplained"] for e in ideas), "")
                 problems = dashboard_contract(read(os.path.join(PLUGIN, "skills", "start", "scripts", "dashboard.html")), data)
                 self.ok(name + ": every key the dashboard reads is in status.json", not problems, "; ".join(problems))
                 src = re.search(r'"since": \[\{[^\n]*', read(CARDS))
@@ -625,6 +702,8 @@ def dashboard_contract(html, data):
         "checkpoint": found(r"\bd\.checkpoint\.(\w+)", script),
         "overview": found(r"\bo\.(\w+)", block("function renderOverview")),
         "goal": found(r"\bg\.(\w+)", block("function renderPlan")),
+        "concept": found(r"\bcn\.(\w+)", script),  # B33: a key idea is always `cn` in the script, a link `ln`
+        "link": found(r"\bln\.(\w+)", script),
     }
     fy = re.search(r'function fyOf.*?\[((?:"\w+",?\s*)+)\]', script, re.S)
     emitted = {
@@ -634,6 +713,8 @@ def dashboard_contract(html, data):
         "checkpoint": {"id", "title"},  # null in a queue with no open summary
         "overview": set(data.get("overview") or {}),
         "goal": set().union(*(set(g) for g in data.get("goals", []))) if data.get("goals") else set(),
+        "concept": set().union(*(set(e) for e in data.get("concepts", []))) if data.get("concepts") else set(),
+        "link": set().union(*(set(ln) for e in data.get("concepts", []) for ln in e["links"])) if any(e["links"] for e in data.get("concepts", [])) else set(),
     }
     bad = []
     for kind, names in read.items():
@@ -646,7 +727,7 @@ def dashboard_contract(html, data):
             bad.append("the dashboard reads for_you keys %s, which status.json does not have" % sorted(want - have))
     else:
         bad.append("could not find the for_you key list (fyOf) in the dashboard")
-    if not read["goal"] or not read["overview"] or not read["card"]:
+    if not read["goal"] or not read["overview"] or not read["card"] or not read["concept"] or not read["link"]:
         bad.append("contract check found no keys to compare (did the dashboard script change shape?)")
     return bad
 
@@ -657,7 +738,7 @@ def check_smoke():
     smoke = Smoke()
     root = tempfile.mkdtemp(prefix="cards-smoke-")
     try:
-        for section in (smoke.lifecycle, smoke.checkin, smoke.settings, smoke.robustness, smoke.overview, smoke.overview_flags, smoke.for_you, smoke.fixes, smoke.wave_counts, smoke.examples):
+        for section in (smoke.lifecycle, smoke.checkin, smoke.settings, smoke.robustness, smoke.overview, smoke.overview_flags, smoke.for_you, smoke.fixes, smoke.wave_counts, smoke.concepts, smoke.examples):
             try:
                 section(root)
             except Exception as err:  # a crash is a failure, and later sections still run
@@ -839,7 +920,20 @@ def check_budget(gen):
     return not bad, ["%d of %d items measured" % (len(sizes), len(CAPS))] + rows + bad
 
 
+def git_ignored(paths):
+    """The paths (relative to PLUGIN) that git ignores there, so they never ship. Empty without git or a repo."""
+    git = shutil.which("git")
+    if not git or not paths:
+        return set()
+    try:
+        p = subprocess.run([git, "-C", PLUGIN, "check-ignore", "--stdin"], input="\n".join(paths), capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
+    return {ln.strip() for ln in p.stdout.split("\n") if ln.strip()} if p.returncode in (0, 1) else set()
+
+
 def check_debris():
+    """Stray tool folders under PLUGIN. A git-ignored one does not ship, so it is skipped (a hook may make an empty .omc/)."""
     found = []
     root_git = os.path.join(PLUGIN, ".git")  # normal when the plugin is the repo root
     for dirpath, dirs, files in os.walk(PLUGIN):
@@ -847,7 +941,9 @@ def check_debris():
             path = os.path.join(dirpath, d)
             if d in ("__pycache__", ".omc") or (d == ".git" and path != root_git):
                 found.append(rel(path))
-    return not found, found
+    ignored = git_ignored(found)
+    bad = [p for p in found if p not in ignored]
+    return not bad, (["skipped as git-ignored: " + ", ".join(sorted(ignored))] if ignored else [""]) + bad
 
 
 def check_validate():

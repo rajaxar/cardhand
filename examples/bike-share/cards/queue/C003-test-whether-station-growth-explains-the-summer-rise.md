@@ -37,3 +37,9 @@ Not checked: nothing known.
 
 ## For you
 What this means: New stations are not why summer is busier, so the seasonal rise looks like real rider behaviour.
+
+## Concepts
+- Station growth: New docking stations opening during the year, which adds trips on its own.
+  - why: It could make summer look busy just because more stations exist by then.
+  - verdict: ruled out, the summer rise stays when only stations open all year are counted.
+  - links: Seasonal swing (could inflate), Fixed-station recount (tested by)

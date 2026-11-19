@@ -59,7 +59,7 @@ The first wave aims at the first version: usually 3 to 10 cards. File each with 
 - `--inputs path` for files the worker must read.
 - `--area`: one short label (data, model, design) so the dashboard groups the work. Reuse labels.
 - `--for D1`: the goal the card serves.
-- A `--human` card needs its `## For you` lines filled (What I need, Why it matters, How), in plain words.
+- A `--human` card needs its `## For you` filled in plain words: What I need, Why it matters, How, and a Background a newcomer can follow.
 - `--priority`: P1 by default, P0 only where the goal fails without the card.
 - `--effort`: light, standard or deep.
 - Write Do as what to achieve and Done when as lines someone can check. Leave the how to the worker.
@@ -71,4 +71,4 @@ Last, run `python3 cards/cards.py status`. Tell the user where the brief is (`ca
 ## Finding the script
 
 If `SCRIPT` does not resolve, look for `skills/start/scripts/cards.py` in the folder your harness reports for this skill.
-After `init`, always use `cards/cards.py`. Never install anything.
+After `init`, always use `cards/cards.py`.

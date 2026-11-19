@@ -19,6 +19,7 @@ attempts: 0
 What I need: Tell me whether Northgate's one-minute rentals are real trips or bike tests.
 Why it matters: If they are tests, Northgate's summer looks busier than it is and the comparison is unfair.
 How: Open Northgate's data notes page and read its line about trips; about 5 minutes.
+Background: We are comparing how bike use rises and falls through the year in three cities' public trip data. The monthly counts for all three are done. Northgate's data keeps rentals shorter than a minute, while the other two leave them out, and Northgate has many of them in summer. Once you answer, Northgate is recounted the same way as the others if they are tests, and the busiest-to-quietest comparison goes ahead.
 
 ## Do
 Read Northgate's dataset documentation and say whether rentals under a minute are meant to count as trips.

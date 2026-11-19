@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "cardhand",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Run a task as a queue of card files: a fresh agent does each card, writes the result to disk and exits, and the queue grows as the work teaches you things.",
   "homepage": "https://github.com/rajaxar/cardhand",
   "repository": "https://github.com/rajaxar/cardhand",

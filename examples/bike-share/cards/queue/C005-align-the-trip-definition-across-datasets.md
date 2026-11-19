@@ -4,7 +4,7 @@ title: Align the trip definition across datasets
 status: todo
 priority: P2
 effort: standard
-depends_on: []
+depends_on: [C008]
 spawned_by: C002
 area: data
 for: D2

@@ -22,7 +22,7 @@ say so once and edit the files by hand. Never install anything. No `cards/`: use
    worker that keeps pinging. Each card gets a fresh worker.
 4. **File proposals** with `new "..." --from <id>` (P2). Raise one only if you can name the Done-when line or card it serves, and at
    most one per returning card. More needs a `cards/DECISIONS.md` line. Merge a proposal into an open card that already covers it.
-5. **Questions never stop the queue.** A human card you file, or a `blocked` one lacking `## For you`, gets its three lines (What I need, Why it matters, How) in plain words. For a `blocked` card or an `ask` line, guess sensibly, record it with
+5. **Questions never stop the queue.** Write the For you lines and Background (RULES.md rule 7) on each human card you file and each card `check` lists as `foryou`. For a `blocked` card or an `ask` line, guess sensibly, record it with
    `answer <id> "assumed: ..."` and say so. With no sensible guess, put the question in your next update and keep going. Wait only
    when a wrong guess is costly or hard to undo. When the user answers, `answer <id> "..."`.
 6. **Dispatch.** Run `ready`. For each `start` line, `claim <id>` (a batch is `claim <id> <id> <id>`) and start one fresh background
@@ -39,10 +39,10 @@ wins: file it as P0 cards in the current wave, and `drop` what it makes pointles
 
 ## The overview
 
-`cards/OVERVIEW.md` is the page the user reads to catch up, and the dashboard shows it. Rewrite it whenever `accept` says to, at every wave summary and when
-the plan changes, in plain English for someone who has not followed along, at most one screen, keeping its six headings: What we
-are trying to do, How we are doing, What we have learned, What we have tried, by area, Ruled out, What happens next. No card
-ids or code names. File each card with `--area <label>` (data, model, design: a few short labels, reused) and `--for <D id>`, the brief goal it serves.
+`cards/OVERVIEW.md` is the page the user reads to catch up, on the dashboard too. Rewrite it whenever `accept` says to, at every wave summary and when
+the plan changes, in plain English for a newcomer, at most one screen, keeping its six headings. No card
+ids or code names. With each rewrite, tidy `cards/CONCEPTS.md` (same format as a card's `## Concepts`; its entries win):
+merge duplicates, fix verdicts, and explain any term the user asks about. File each card with `--area <label>` (a few short reused labels: data, model, design) and `--for <D id>`, the brief goal it serves.
 
 ## Waves and summaries
 

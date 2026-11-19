@@ -2,7 +2,7 @@
 
 ## Wave 2: 0 of 4 done, 1 ruled out
 
-Updated 2026-11-19 16:18. 8 cards: 3 todo, 4 done, 1 dropped.
+Updated 2026-11-19 17:40. 8 cards: 3 todo, 4 done, 1 dropped.
 Live view: open `dashboard.html` in this folder in a browser.
 Big picture in plain English: `OVERVIEW.md`.
 
@@ -31,6 +31,18 @@ Nothing.
 - C004 Wave 1 summary: Wave 1 gives a monthly trip table for all three datasets, and shows summer is busiest in each; done inline.
 - C002 Monthly trip counts per dataset: Every dataset has its busiest month in summer and its quietest in winter, though Lakeside is flatter than the other two.
 - C001 Inventory the three datasets: All three datasets cover the same twelve months, but only two define a trip as "a rental of at least 60 seconds".
+
+## Key ideas
+
+- Fixed-station recount (not explained yet): -
+- Minimum trip length (in use): The shortest rental that still counts as a trip, 60 seconds in two of the three systems.
+- Monthly trip count (in use): How many trips started in each calendar month.
+- Seasonal swing (testing): The busiest month's trips divided by the quietest month's, one number per system.
+- Shared twelve months (in use): The twelve calendar months that all three datasets cover.
+- Station growth (ruled out): New docking stations opening during the year, which adds trips on its own.
+- Test rental (open): A rental of under a minute made to check that a bike works, not a real ride.
+- Trip definition (in use): The rule a bike-share system uses to decide which rentals count as trips.
+- Weather adjustment (ruled out): Explaining the monthly pattern with daily temperature and rain.
 
 ## Ruled out
 

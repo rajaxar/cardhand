@@ -18,6 +18,9 @@ so a new session resumes by running `status`. Standard library only.
   cards.py drop ID "why"
   cards.py check                      cards in review, blocked, stale or missing an answer
   cards.py status                     write STATUS.md, status.json and status.js; print a summary
+
+A card may end with `## Concepts`: terms it relies on or ruled out, in plain words. cards/CONCEPTS.md holds
+the orchestrator's own entries in the same format, and they win over card entries for the same term.
 """
 import argparse
 import datetime
@@ -28,7 +31,7 @@ import shutil
 import sys
 import time
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 STATUSES = ["todo", "doing", "review", "done", "blocked", "dropped"]
 CLOSED = {"done", "dropped"}
 PRIORITIES = {"P0": 0, "P1": 1, "P2": 2}
@@ -45,36 +48,42 @@ PLACEHOLDER = "(worker fills this in"
 TEXT_KEYS = ("title", "area")  # free text: a ` #` in them is not a comment
 OVERVIEW_BEHIND = 5  # `accept` asks for a rewrite at this many closed cards; `check` flags an overview more than this far behind
 FOR_YOU_CAP = 400
-FOR_YOU = (("need", "What I need"), ("why", "Why it matters"), ("how", "How"), ("means", "What this means"))
-SECTIONS = ("Why", "Do", "For you", "Done when", "Inputs", "Outputs", "Result", "Proposed cards", "Notes", "Dropped")
+BACKGROUND_CAP = 1200
+FOR_YOU = (("need", "What I need"), ("why", "Why it matters"), ("how", "How"), ("means", "What this means"),
+           ("background", "Background"))
+SECTIONS = ("Why", "Do", "For you", "Done when", "Inputs", "Outputs", "Result", "Proposed cards", "Notes", "Dropped", "Concepts")
+VERDICTS = ("in use", "ruled out", "testing", "open")  # a concept's verdict, in the words the dashboard shows
+CONCEPT_CAP = 400  # characters per concept field
 
 RULES_VERSION = "<!-- cards rules, version {} -->".format(VERSION)
 RULES_MARKER = "<!-- Project rules go below this line. The tool never changes them. -->"
 RULES_V0_MARKER = "The human may add project rules below this line."
 RULES = """# Rules for a worker
 
-You were given one card, or a short batch. For each card:
+For each card you were given (one, or a short batch):
 
-1. Read the card, then the files under its Inputs. If it lists none, read the Result of each card
-   in its `depends_on` and `spawned_by`. Do not read the whole queue or STATUS.md.
-2. Do what the card says. Write only its Outputs, the card file itself and `{root}/scratch/<id>/`.
-   Do not push, publish, send, or delete anything outside the project.
-3. Found something important outside the card? Do not do it. Add it under `## Proposed cards`: a
+1. Read the card and its Inputs (none listed: the Results of its `depends_on` and `spawned_by`
+   cards). Not the whole queue or STATUS.md.
+2. Do what the card says. Write only its Outputs, the card file and `{root}/scratch/<id>/`.
+   Never push, publish, send, or delete anything outside the project.
+3. Found something important beyond the card? Do not do it. List it in `## Proposed cards`: a
    title, one line of why, and P0 (the goal fails without it), P1 (it could change a decision) or P2.
 4. Run a long job in one foreground call. Never sleep and poll.
-5. Fill `## Result` as you go, so a restart loses nothing. When you finish it reads:
-   - Line 1: the answer, one sentence a stranger would understand. If you ruled something out,
-     start with `Ruled out:` and give the reason.
+5. Fill `## Result` as you go. At the end it reads:
+   - Line 1: the answer, one sentence a stranger understands. Ruled something out? Start
+     with `Ruled out:` and the reason.
    - Each Done-when line (or the Do, if none): met, unmet or not checked, and how you know.
-   - `Not checked:` and what you did not check, even if it is "nothing known".
-   - Anything over about 2 KB goes in an output file that the Result links to.
-6. Delete temporary files you made in scratch (browser profiles, caches, downloads). Keep only
-   what someone might read.
-7. Set `status: review`, or `status: blocked` and say exactly what you need. Leave other keys alone.
-8. A person must act (you set `blocked`)? Add `## For you`, up to three short lines in plain words,
-   no card ids, paths or jargon: `What I need:` one sentence. `Why it matters:` one sentence.
-   `How:` the first step and a time estimate. On a finished card add `What this means:` one
-   sentence only if the result changes the human's picture of the project. Most cards skip it.
+   - `Not checked:` what you did not check, even if it is "nothing known".
+   - Over 2 KB? Move detail to a linked output file.
+6. Delete temporary scratch files. Set `status: review`, or `status: blocked` and say
+   exactly what you need. Leave other keys alone.
+7. A person must act (you set `blocked`)? Add `## For you` in plain words, no card ids, paths or
+   jargon: `What I need:`, `Why it matters:` one sentence each. `How:` the first step and a time.
+   `Background:` 2 to 5 sentences a newcomer can follow: the situation, what was done, what
+   happens once they act. A result that changes the picture adds `What this means:`, one sentence.
+8. Used or ruled out a term newcomers would not know? Add under `## Concepts`: `- Term: what it
+   is, in plain words.`, indented `- why:` it matters here, `- verdict:` in use, ruled out,
+   testing or open, plus why, `- links: Other term (how related)`.
 9. Reply with one line per card: `<id> <review|blocked> <card path>`.
 """
 
@@ -247,14 +256,23 @@ class Card:
         return self.get("for")
 
     def for_you(self):
-        """{need, why, how, means} from `## For you`; empty strings when a line is absent or still the template's placeholder."""
+        """{need, why, how, means, background} from `## For you`; empty strings when a line is absent or still the
+        template's placeholder. Background is a paragraph: it runs to the next labelled line, joined into one line."""
         text = self.section("For you")
+        labels = "|".join(re.escape(label) for _, label in FOR_YOU)
         found = {}
         for key, label in FOR_YOU:
-            match = re.search(r"^[ \t\-*]*{}:[ \t]*(.*)$".format(re.escape(label)), text, re.I | re.M)
-            value = match.group(1).strip() if match else ""
-            found[key] = "" if value.startswith("(") else value[:FOR_YOU_CAP]
+            if key == "background":
+                match = re.search(r"^[ \t\-*]*Background:[ \t]*(.*?)(?=^[ \t\-*]*(?:{}):|\Z)".format(labels), text, re.I | re.M | re.S)
+                value, cap = (" ".join(match.group(1).split()) if match else ""), BACKGROUND_CAP
+            else:
+                match = re.search(r"^[ \t\-*]*{}:[ \t]*(.*)$".format(re.escape(label)), text, re.I | re.M)
+                value, cap = (match.group(1).strip() if match else ""), FOR_YOU_CAP
+            found[key] = "" if value.startswith("(") else value[:cap]
         return found
+
+    def concepts(self):
+        return parse_concepts(self.section("Concepts"))
 
     def needs_person(self):
         return self.status not in CLOSED and (self.human or self.status == "blocked")
@@ -279,6 +297,141 @@ class Card:
             if " dropped: " in line:
                 return line.split(" dropped: ", 1)[1].strip()
         return self.section("Dropped").split("\n")[-1].lstrip("- ")  # cards written before v0.2
+
+
+def _plain(text):
+    return " ".join(text.replace("`", "").replace("**", "").split()).strip()
+
+
+def _split_links(text):
+    """`A (how), B (how, more)`: split on commas outside parentheses."""
+    parts, depth, cur = [], 0, ""
+    for ch in text:
+        depth += (ch == "(") - (ch == ")")
+        if ch in ",;" and depth <= 0:
+            parts.append(cur)
+            cur, depth = "", 0
+        else:
+            cur += ch
+    return [p.strip() for p in parts + [cur] if p.strip()]
+
+
+def parse_concepts(text):
+    """Entries of a `## Concepts` section or cards/CONCEPTS.md, in this shape:
+
+      - Term: what it is, in one plain sentence.
+        - why: why it matters in this project.
+        - verdict: in use | ruled out | testing | open, plus a few words of reason.
+        - links: Other term (how they relate), Another term (relation)
+
+    Returns [{name, meaning, why, verdict, reason, links: [{to, label}], problem}]. verdict is "" when absent;
+    problem names what `check` should flag, or is ""."""
+    found, cur = [], None
+    for line in text.split("\n"):
+        m = re.match(r"^[ \t]*[-*+][ \t]+(.*)$", line)
+        if not m or m.group(1).strip().startswith("("):
+            continue
+        item = m.group(1).strip()
+        field = re.match(r"^\**(why|verdict|links?)\**[ \t]*:[ \t]*(.*)$", item, re.I)
+        if field and cur is not None:
+            key, value = field.group(1).lower(), _plain(field.group(2))
+            if key == "why":
+                cur["why"] = value[:CONCEPT_CAP]
+            elif key == "verdict":
+                low = value.lower().replace("-", " ")
+                word = next((v for v in VERDICTS if low.startswith(v)), "")
+                cur["verdict"] = word
+                cur["reason"] = value[len(word):].lstrip(" ,;:.()|\u2013\u2014-").rstrip(")").strip()[:CONCEPT_CAP] if word else value[:CONCEPT_CAP]
+                if not word:
+                    cur["problem"] = "verdict is not one of: " + ", ".join(VERDICTS)
+            else:
+                for part in _split_links(value):
+                    lm = re.match(r"^(.*?)[ \t]*\((.*)\)$", part)
+                    to, label = (lm.group(1), lm.group(2)) if lm else (part, "")
+                    to = _plain(to).strip("*_ ")
+                    if to:
+                        cur["links"].append({"to": to[:80], "label": _plain(label)[:80]})
+            continue
+        name, _, meaning = item.partition(":")
+        name = _plain(name).strip("*_ ")
+        if not name or len(name) > 80:
+            continue
+        cur = {"name": name, "meaning": _plain(meaning)[:CONCEPT_CAP], "why": "", "verdict": "", "reason": "",
+               "links": [], "problem": "" if _plain(meaning) else "no plain meaning after the term"}
+        found.append(cur)
+    return found
+
+
+def concepts_path(root):
+    return os.path.join(root, "CONCEPTS.md")
+
+
+def curated_concepts(root):
+    """(entries, mtime) from cards/CONCEPTS.md, or ([], None) without the file."""
+    try:
+        with open(concepts_path(root), encoding="utf-8") as f:
+            return parse_concepts(f.read()), os.path.getmtime(concepts_path(root))
+    except (OSError, UnicodeDecodeError):
+        return [], None
+
+
+def concepts_data(root, cards):
+    """One entry per term, merged case-insensitively. Among cards the newest wins field by field (finished, else
+    started, else filed); an entry in cards/CONCEPTS.md wins over every card. Links to a term with no entry become
+    entries of their own, marked unexplained."""
+    entries = {}
+
+    def take(e, when, source):
+        key = e["name"].lower()
+        cur = entries.setdefault(key, {"name": e["name"], "meaning": "", "why": "", "verdict": "", "reason": "",
+                                       "links": [], "cards": [], "updated": None, "curated": False, "unexplained": False})
+        curated = source is None
+        if cur["curated"] and not curated:
+            if source not in cur["cards"]:
+                cur["cards"].append(source)
+            return
+        if curated:
+            cur["name"] = e["name"]  # the orchestrator's spelling wins; otherwise the first card's stays
+        for k in ("meaning", "why"):
+            if e[k]:
+                cur[k] = e[k]
+        if e["verdict"] or e["reason"]:
+            cur["verdict"], cur["reason"] = e["verdict"], e["reason"]
+        if curated and e["links"]:
+            cur["links"] = []
+        for link in e["links"]:
+            same = [x for x in cur["links"] if x["to"].lower() == link["to"].lower()]
+            if same:
+                same[0]["label"] = link["label"] or same[0]["label"]
+            else:
+                cur["links"].append(dict(link))
+        if source and source not in cur["cards"]:
+            cur["cards"].append(source)
+        cur["updated"] = when or cur["updated"]
+        cur["curated"] = cur["curated"] or curated
+
+    def when(card):
+        return parse_time(card.get("finished")) or parse_time(card.get("started")) or parse_time(card.get("filed")) or 0
+    for card in sorted(cards.values(), key=lambda c: (when(c), c.number)):
+        for e in card.concepts():
+            take(e, when(card) or None, card.id)
+    curated, mtime = curated_concepts(root)
+    for e in curated:
+        take(e, mtime, None)
+    for cur in list(entries.values()):
+        cur["verdict"] = cur["verdict"] or "open"
+        kept = []
+        for link in cur["links"]:
+            key = link["to"].lower()
+            if key == cur["name"].lower():
+                continue
+            if key not in entries:
+                entries[key] = {"name": link["to"], "meaning": "", "why": "", "verdict": "", "reason": "", "links": [],
+                                "cards": [], "updated": None, "curated": False, "unexplained": True}
+            link["to"] = entries[key]["name"]
+            kept.append(link)
+        cur["links"] = kept
+    return sorted(entries.values(), key=lambda e: e["name"].lower())
 
 
 def load(root):
@@ -543,7 +696,8 @@ def cmd_new(args, root):
     body = "\n## Do\n{}\n\n## Done when\n{}\n".format(do, args.done_when or "(checkable lines)")
     if args.human:
         body = ("\n## For you\nWhat I need: (one plain sentence)\nWhy it matters: (one plain sentence)\n"
-                "How: (the first step and a time estimate)\n") + body
+                "How: (the first step and a time estimate)\n"
+                "Background: (two to five plain sentences: what is going on, what was done, what happens next)\n") + body
     if args.inputs:
         body += "\n## Inputs\n{}\n".format(args.inputs)
     if args.outputs:
@@ -842,6 +996,9 @@ def cmd_check(args, root):
         if card.needs_person() and not card.for_you()["need"]:
             print("foryou  {} needs the user but its `## For you` has no `What I need:` line".format(card.id))
             quiet = False
+        elif card.needs_person() and not card.for_you()["background"]:
+            print("foryou  {} needs the user but its `## For you` has no `Background:` paragraph".format(card.id))
+            quiet = False
     for card in sorted(cards.values(), key=lambda c: c.number):
         for label, line in card.for_you().items():
             hit = jargon_in(line, cards)
@@ -853,6 +1010,12 @@ def cmd_check(args, root):
         if known and card.goal and card.goal not in known:
             print("goal    {} serves {}, which BRIEF.md does not list".format(card.id, card.goal))
             quiet = False
+    for where, entries in [(c.id, c.concepts()) for c in sorted(cards.values(), key=lambda c: c.number)] + [
+            ("CONCEPTS.md", curated_concepts(root)[0])]:
+        for e in entries:
+            if e["problem"]:
+                print("concept {} \"{}\": {}".format(where, e["name"], e["problem"]))
+                quiet = False
     state = overview_state(root, cards)
     if state and state[2] > OVERVIEW_BEHIND:
         print("overview  stale: {} cards closed since it was last written".format(state[2]))
@@ -957,8 +1120,53 @@ def ruled_out(card):
     return card.status == "dropped" or card.outcome().startswith("Ruled out:")
 
 
+def unblocks_of(cards, goals):
+    """For each card, what waits on it: open cards that list it in depends_on (by title), how many more open cards
+    wait further down that chain, and the unmet brief goals served by it or by anything downstream (plain text)."""
+    below = {}
+    for card in cards.values():
+        for dep in card.list("depends_on"):
+            if card.status not in CLOSED:
+                below.setdefault(dep, []).append(card)
+    text = {g["id"]: g["text"] for g in goals if not g["met"]}
+    found = {}
+    for card in cards.values():
+        direct = sorted(below.get(card.id, []), key=lambda c: c.number)
+        seen, stack = {}, [card.id]
+        while stack:
+            for c in below.get(stack.pop(), []):
+                if c.id not in seen and c.id != card.id:
+                    seen[c.id] = c
+                    stack.append(c.id)
+        gids = []
+        for c in [card] + sorted(seen.values(), key=lambda c: c.number):
+            gid = (c.goal or "").upper()
+            if gid in text and gid not in gids:
+                gids.append(gid)
+        found[card.id] = {"cards": [{"id": c.id, "title": c.get("title")} for c in direct],
+                          "more": len(seen) - len(direct), "goals": [{"id": g, "text": text[g]} for g in gids]}
+    return found
+
+
+def waiting_since(card, cards):
+    """When a card that needs the person started waiting: a blocked card's last edit, or for a human card the later
+    of when it was filed and when the last card it waited on finished."""
+    if card.status == "blocked":
+        try:
+            return os.path.getmtime(card.path)
+        except OSError:
+            return None
+    if card.status == "todo" and card.human:
+        times = [parse_time(card.get("filed")) or 0] + [parse_time(cards[d].get("finished")) or 0
+                                                        for d in card.list("depends_on") if d in cards]
+        return max(times) or None
+    return None
+
+
 def status_data(root, cards):
     agents, humans, summaries, best = runnable(cards)
+    goals = goal_rows(root, cards)
+    unblocks = unblocks_of(cards, goals)
     ready_ids = [c.id for c in agents + summaries]
     current, wave_of = wave_numbers(cards)
     waves = {cid: wave_of(c) for cid, c in cards.items()}
@@ -989,7 +1197,9 @@ def status_data(root, cards):
             "why_dropped": card.why_dropped() if card.status == "dropped" else "",
             "wave": waves[card.id], "depth": depth[card.id], "outputs": card.paths("Outputs"),
             "area": card.get("area"), "for_goal": card.goal, "for_you": card.for_you(),
-            "touched": touched or None, "ruled_out": ruled_out(card), "learned": learned_lines(card),
+            "touched": touched or None, "filed": parse_time(card.get("filed")),
+            "waiting_since": waiting_since(card, cards) if column == "you" else None, "unblocks": unblocks[card.id],
+            "ruled_out": ruled_out(card), "learned": learned_lines(card),
             "summary": first_sentence(card.section("Why")) or first_sentence(card.section("Do")),
             "body": card.body.strip()[:BODY_CAP],
         })
@@ -1009,10 +1219,11 @@ def status_data(root, cards):
         "counts": {s: sum(1 for c in cards.values() if c.status == s) for s in STATUSES},
         "high_total": len(high), "high_closed": sum(1 for c in high if c.status in CLOSED),
         "checkpoint": {"id": checkpoint.id, "title": checkpoint.get("title")} if checkpoint else None,
-        "goals": goal_rows(root, cards), "wave": current, "waves": wave_rows, "later": brief_lines(root, "Later"),
+        "goals": goals, "wave": current, "waves": wave_rows, "later": brief_lines(root, "Later"),
         "brief": "BRIEF.md" if os.path.exists(os.path.join(root, "BRIEF.md")) else None,
         "stale_minutes": STALE_MINUTES, "overview": overview_data(root, cards), "areas": area_rows(cards),
-        "key_path": key_path(cards), "decisions": decisions_data(root), "cards": rows,
+        "key_path": key_path(cards), "decisions": decisions_data(root), "concepts": concepts_data(root, cards),
+        "cards": rows,
     }
 
 
@@ -1102,6 +1313,8 @@ def viewable_paths(root, cards):
     A directory Output stands for the text files inside it, up to 20. Paths outside the project are skipped."""
     project = os.path.realpath(os.path.dirname(root))
     found = [rel(os.path.join(root, "BRIEF.md"), root), rel(os.path.join(root, "STATUS.md"), root)]
+    if os.path.exists(concepts_path(root)):
+        found.append(rel(concepts_path(root), root))
     for card in sorted(cards.values(), key=lambda c: c.number):
         for item in card.paths("Outputs"):
             path = os.path.normpath(os.path.join(project, item))
@@ -1232,6 +1445,8 @@ def write_status(root, cards):
     finished = sorted((r for r in rows if r["status"] == "done" and not r["ruled_out"] and r["outcome"]),
                       key=lambda r: r["finished"] or 0, reverse=True)
     block("Learned, newest first", ["- {} {}: {}".format(r["id"], r["title"], r["outcome"]) for r in finished[:15]])
+    block("Key ideas", ["- {} ({}): {}".format(e["name"], e["verdict"] or "not explained yet", e["meaning"] or "-")
+                        for e in data["concepts"][:40]])
     block("Ruled out", ["- {} {}: {}".format(r["id"], r["title"], r["why_dropped"] if r["status"] == "dropped" else r["outcome"])
                         for r in rows if r["ruled_out"]])
     block("All answers", ["- {} {} {}: {}".format(r["id"], r["status"], r["title"],

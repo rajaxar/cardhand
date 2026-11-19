@@ -33,3 +33,13 @@ Not checked: whether the docs match how the data was actually exported.
 
 ## For you
 What this means: Only two of the three systems count trips the same way, so the comparison may need adjusting.
+
+## Concepts
+- Trip definition: The rule a bike-share system uses to decide which rentals count as trips.
+  - why: The three systems use different rules, so their raw counts may not compare like with like.
+  - verdict: in use, every count in this project says which rule it follows.
+  - links: Minimum trip length (part of it), Test rental (left out by it)
+- Minimum trip length: The shortest rental that still counts as a trip, 60 seconds in two of the three systems.
+  - why: It is the one place the trip rules differ.
+  - verdict: in use, the 60-second rule is the shared yardstick.
+  - links: Test rental (would remove)

@@ -22,3 +22,9 @@ Join daily temperature to the trip counts and check how much of the seasonal pat
 
 ## Notes
 - 2026-03-02 dropped: the goal is to compare seasonal patterns across datasets, not to explain them. Moved to the brief's Later list if wanted.
+
+## Concepts
+- Weather adjustment: Explaining the monthly pattern with daily temperature and rain.
+  - why: Weather is the obvious reason summer is busier.
+  - verdict: ruled out, the goal is to compare the pattern across systems, not to explain it.
+  - links: Seasonal swing (would explain)

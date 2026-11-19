@@ -36,3 +36,12 @@ Not checked: Northgate's counts include a one-minute test trip type that C001 di
 
 ## Proposed cards
 - Align the trip definition across datasets (Northgate counts short test rentals).
+
+## Concepts
+- Monthly trip count: How many trips started in each calendar month.
+  - why: Every seasonal comparison in this project is built from it.
+  - verdict: in use, one table holds it for all three systems.
+  - links: Trip definition (counted under), Shared twelve months (limited to)
+- Test rental: A rental of under a minute made to check that a bike works, not a real ride.
+  - why: Northgate keeps them in its data and has many in summer.
+  - verdict: open, we do not yet know whether Northgate's short rentals are tests.

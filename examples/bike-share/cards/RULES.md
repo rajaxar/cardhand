@@ -1,28 +1,30 @@
-<!-- cards rules, version 0.3.0 -->
+<!-- cards rules, version 0.4.0 -->
 # Rules for a worker
 
-You were given one card, or a short batch. For each card:
+For each card you were given (one, or a short batch):
 
-1. Read the card, then the files under its Inputs. If it lists none, read the Result of each card
-   in its `depends_on` and `spawned_by`. Do not read the whole queue or STATUS.md.
-2. Do what the card says. Write only its Outputs, the card file itself and `cards/scratch/<id>/`.
-   Do not push, publish, send, or delete anything outside the project.
-3. Found something important outside the card? Do not do it. Add it under `## Proposed cards`: a
+1. Read the card and its Inputs (none listed: the Results of its `depends_on` and `spawned_by`
+   cards). Not the whole queue or STATUS.md.
+2. Do what the card says. Write only its Outputs, the card file and `cards/scratch/<id>/`.
+   Never push, publish, send, or delete anything outside the project.
+3. Found something important beyond the card? Do not do it. List it in `## Proposed cards`: a
    title, one line of why, and P0 (the goal fails without it), P1 (it could change a decision) or P2.
 4. Run a long job in one foreground call. Never sleep and poll.
-5. Fill `## Result` as you go, so a restart loses nothing. When you finish it reads:
-   - Line 1: the answer, one sentence a stranger would understand. If you ruled something out,
-     start with `Ruled out:` and give the reason.
+5. Fill `## Result` as you go. At the end it reads:
+   - Line 1: the answer, one sentence a stranger understands. Ruled something out? Start
+     with `Ruled out:` and the reason.
    - Each Done-when line (or the Do, if none): met, unmet or not checked, and how you know.
-   - `Not checked:` and what you did not check, even if it is "nothing known".
-   - Anything over about 2 KB goes in an output file that the Result links to.
-6. Delete temporary files you made in scratch (browser profiles, caches, downloads). Keep only
-   what someone might read.
-7. Set `status: review`, or `status: blocked` and say exactly what you need. Leave other keys alone.
-8. A person must act (you set `blocked`)? Add `## For you`, up to three short lines in plain words,
-   no card ids, paths or jargon: `What I need:` one sentence. `Why it matters:` one sentence.
-   `How:` the first step and a time estimate. On a finished card add `What this means:` one
-   sentence only if the result changes the human's picture of the project. Most cards skip it.
+   - `Not checked:` what you did not check, even if it is "nothing known".
+   - Over 2 KB? Move detail to a linked output file.
+6. Delete temporary scratch files. Set `status: review`, or `status: blocked` and say
+   exactly what you need. Leave other keys alone.
+7. A person must act (you set `blocked`)? Add `## For you` in plain words, no card ids, paths or
+   jargon: `What I need:`, `Why it matters:` one sentence each. `How:` the first step and a time.
+   `Background:` 2 to 5 sentences a newcomer can follow: the situation, what was done, what
+   happens once they act. A result that changes the picture adds `What this means:`, one sentence.
+8. Used or ruled out a term newcomers would not know? Add under `## Concepts`: `- Term: what it
+   is, in plain words.`, indented `- why:` it matters here, `- verdict:` in use, ruled out,
+   testing or open, plus why, `- links: Other term (how related)`.
 9. Reply with one line per card: `<id> <review|blocked> <card path>`.
 
 <!-- Project rules go below this line. The tool never changes them. -->

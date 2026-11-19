@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "updated": 1795123134.425248,
+ "updated": 1795128057.997459,
  "project": "bike-share",
  "goal": [
   "Compare three open bike-share trip datasets (Harbor City, Northgate, Lakeside) for seasonal patterns, and say which seasonal effects hold in all three."
@@ -80,7 +80,7 @@
  "stale_minutes": 30,
  "overview": {
   "text": "# Overview\n\n## What we are trying to do\nWe have trip records from three bike-share systems and want to know whether they all rise and fall with the seasons by the same amount, or whether one system behaves differently.\n\n## How we are doing\nThe first wave is finished: we know what each dataset holds and we have month-by-month trip counts for all three. One important card is left: measuring the seasonal swing for each system. The answer is close, but not yet trustworthy.\n\n## What we have learned\nAll three systems are busiest in summer and quietest in winter, though Lakeside is flatter than the other two. Adding stations explains very little of the summer rise. One system counts very short test rentals as trips, which may inflate its numbers.\n\n## What we have tried, by area\n- Data: inventoried the three datasets and counted trips per month. Open: make the three trip definitions match.\n- Analysis: tested whether new stations explain the summer rise (they do not). Open: measure the swing per system.\n\n## Ruled out\n- Station growth as the cause of the summer rise.\n- Adding weather data: it would explain the swing, but not how it differs between systems.\n\n## What happens next\nMeasure the seasonal swing for each system, then, if time allows, align the trip definitions so the comparison is fair. After that we write up whether Lakeside really is flatter.\n",
-  "updated": 1795123014.1375864,
+  "updated": 1795128057.575047,
   "stale": false,
   "closed": 0,
   "placeholder": false,
@@ -119,6 +119,174 @@
    "text": "Weather would explain the swing, but the question is how the swing differs by dataset. Weather moved to the Later list."
   }
  ],
+ "concepts": [
+  {
+   "name": "Fixed-station recount",
+   "meaning": "",
+   "why": "",
+   "verdict": "",
+   "reason": "",
+   "links": [],
+   "cards": [],
+   "updated": null,
+   "curated": false,
+   "unexplained": true
+  },
+  {
+   "name": "Minimum trip length",
+   "meaning": "The shortest rental that still counts as a trip, 60 seconds in two of the three systems.",
+   "why": "It is the one place the trip rules differ.",
+   "verdict": "in use",
+   "reason": "the 60-second rule is the shared yardstick.",
+   "links": [
+    {
+     "to": "Test rental",
+     "label": "would remove"
+    }
+   ],
+   "cards": [
+    "C001"
+   ],
+   "updated": 1772443200.0,
+   "curated": false,
+   "unexplained": false
+  },
+  {
+   "name": "Monthly trip count",
+   "meaning": "How many trips started in each calendar month.",
+   "why": "Every seasonal comparison in this project is built from it.",
+   "verdict": "in use",
+   "reason": "one table holds it for all three systems.",
+   "links": [
+    {
+     "to": "Trip definition",
+     "label": "counted under"
+    },
+    {
+     "to": "Shared twelve months",
+     "label": "limited to"
+    }
+   ],
+   "cards": [
+    "C002"
+   ],
+   "updated": 1772446200.0,
+   "curated": false,
+   "unexplained": false
+  },
+  {
+   "name": "Seasonal swing",
+   "meaning": "The busiest month's trips divided by the quietest month's, one number per system.",
+   "why": "It is the single figure the brief compares across the three systems.",
+   "verdict": "testing",
+   "reason": "the three figures are being computed now.",
+   "links": [
+    {
+     "to": "Monthly trip count",
+     "label": "computed from"
+    },
+    {
+     "to": "Trip definition",
+     "label": "depends on"
+    }
+   ],
+   "cards": [],
+   "updated": 1795128057.5761528,
+   "curated": true,
+   "unexplained": false
+  },
+  {
+   "name": "Shared twelve months",
+   "meaning": "The twelve calendar months that all three datasets cover.",
+   "why": "Comparing different months would mix seasons with data gaps.",
+   "verdict": "in use",
+   "reason": "set by the first decision.",
+   "links": [],
+   "cards": [],
+   "updated": 1795128057.5761528,
+   "curated": true,
+   "unexplained": false
+  },
+  {
+   "name": "Station growth",
+   "meaning": "New docking stations opening during the year, which adds trips on its own.",
+   "why": "It could make summer look busy just because more stations exist by then.",
+   "verdict": "ruled out",
+   "reason": "the summer rise stays when only stations open all year are counted.",
+   "links": [
+    {
+     "to": "Seasonal swing",
+     "label": "could inflate"
+    },
+    {
+     "to": "Fixed-station recount",
+     "label": "tested by"
+    }
+   ],
+   "cards": [
+    "C003"
+   ],
+   "updated": 1772448600.0,
+   "curated": false,
+   "unexplained": false
+  },
+  {
+   "name": "Test rental",
+   "meaning": "A rental of under a minute made to check that a bike works, not a real ride.",
+   "why": "Northgate keeps them in its data and has many in summer.",
+   "verdict": "open",
+   "reason": "we do not yet know whether Northgate's short rentals are tests.",
+   "links": [],
+   "cards": [
+    "C002"
+   ],
+   "updated": 1772446200.0,
+   "curated": false,
+   "unexplained": false
+  },
+  {
+   "name": "Trip definition",
+   "meaning": "The rule a bike-share system uses to decide which rentals count as trips.",
+   "why": "The three systems use different rules, so their raw counts may not compare like with like.",
+   "verdict": "in use",
+   "reason": "every count in this project says which rule it follows.",
+   "links": [
+    {
+     "to": "Minimum trip length",
+     "label": "part of it"
+    },
+    {
+     "to": "Test rental",
+     "label": "left out by it"
+    }
+   ],
+   "cards": [
+    "C001"
+   ],
+   "updated": 1772443200.0,
+   "curated": false,
+   "unexplained": false
+  },
+  {
+   "name": "Weather adjustment",
+   "meaning": "Explaining the monthly pattern with daily temperature and rain.",
+   "why": "Weather is the obvious reason summer is busier.",
+   "verdict": "ruled out",
+   "reason": "the goal is to compare the pattern across systems, not to explain it.",
+   "links": [
+    {
+     "to": "Seasonal swing",
+     "label": "would explain"
+    }
+   ],
+   "cards": [
+    "C007"
+   ],
+   "updated": 1772449200.0,
+   "curated": false,
+   "unexplained": false
+  }
+ ],
  "cards": [
   {
    "id": "C001",
@@ -152,13 +320,21 @@
     "need": "",
     "why": "",
     "how": "",
-    "means": "Only two of the three systems count trips the same way, so the comparison may need adjusting."
+    "means": "Only two of the three systems count trips the same way, so the comparison may need adjusting.",
+    "background": ""
    },
    "touched": null,
+   "filed": 1772442000.0,
+   "waiting_since": null,
+   "unblocks": {
+    "cards": [],
+    "more": 0,
+    "goals": []
+   },
    "ruled_out": false,
    "learned": [],
    "summary": "For each dataset, list the columns, the date range and how a trip is defined in its docs.",
-   "body": "## Do\nFor each dataset, list the columns, the date range and how a trip is defined in its docs.\n\n## Done when\n- Each dataset has one line for columns, date range and trip definition.\n\n## Outputs\ncards/scratch/C001/inventory.md\n\n## Result\nAll three datasets cover the same twelve months, but only two define a trip as \"a rental of at least 60 seconds\".\n\n- Each dataset has one line for columns, date range and trip definition: met, see cards/scratch/C001/inventory.md.\n\nNot checked: whether the docs match how the data was actually exported.\n\n## For you\nWhat this means: Only two of the three systems count trips the same way, so the comparison may need adjusting."
+   "body": "## Do\nFor each dataset, list the columns, the date range and how a trip is defined in its docs.\n\n## Done when\n- Each dataset has one line for columns, date range and trip definition.\n\n## Outputs\ncards/scratch/C001/inventory.md\n\n## Result\nAll three datasets cover the same twelve months, but only two define a trip as \"a rental of at least 60 seconds\".\n\n- Each dataset has one line for columns, date range and trip definition: met, see cards/scratch/C001/inventory.md.\n\nNot checked: whether the docs match how the data was actually exported.\n\n## For you\nWhat this means: Only two of the three systems count trips the same way, so the comparison may need adjusting.\n\n## Concepts\n- Trip definition: The rule a bike-share system uses to decide which rentals count as trips.\n  - why: The three systems use different rules, so their raw counts may not compare like with like.\n  - verdict: in use, every count in this project says which rule it follows.\n  - links: Minimum trip length (part of it), Test rental (left out by it)\n- Minimum trip length: The shortest rental that still counts as a trip, 60 seconds in two of the three systems.\n  - why: It is the one place the trip rules differ.\n  - verdict: in use, the 60-second rule is the shared yardstick.\n  - links: Test rental (would remove)"
   },
   {
    "id": "C002",
@@ -194,13 +370,21 @@
     "need": "",
     "why": "",
     "how": "",
-    "means": ""
+    "means": "",
+    "background": ""
    },
    "touched": null,
+   "filed": 1772442000.0,
+   "waiting_since": null,
+   "unblocks": {
+    "cards": [],
+    "more": 0,
+    "goals": []
+   },
    "ruled_out": false,
    "learned": [],
    "summary": "Count trips per month for each dataset over the shared twelve months, and put them in one table.",
-   "body": "## Do\nCount trips per month for each dataset over the shared twelve months, and put them in one table.\n\n## Done when\n- One table has twelve rows and three columns of counts.\n\n## Inputs\ncards/scratch/C001/inventory.md\n\n## Outputs\ncards/scratch/C002/monthly_counts.csv\n\n## Result\nEvery dataset has its busiest month in summer and its quietest in winter, though Lakeside is flatter than the other two.\n\n- One table has twelve rows and three columns of counts: met, cards/scratch/C002/monthly_counts.csv.\n\nNot checked: Northgate's counts include a one-minute test trip type that C001 did not rule out.\n\n## Proposed cards\n- Align the trip definition across datasets (Northgate counts short test rentals)."
+   "body": "## Do\nCount trips per month for each dataset over the shared twelve months, and put them in one table.\n\n## Done when\n- One table has twelve rows and three columns of counts.\n\n## Inputs\ncards/scratch/C001/inventory.md\n\n## Outputs\ncards/scratch/C002/monthly_counts.csv\n\n## Result\nEvery dataset has its busiest month in summer and its quietest in winter, though Lakeside is flatter than the other two.\n\n- One table has twelve rows and three columns of counts: met, cards/scratch/C002/monthly_counts.csv.\n\nNot checked: Northgate's counts include a one-minute test trip type that C001 did not rule out.\n\n## Proposed cards\n- Align the trip definition across datasets (Northgate counts short test rentals).\n\n## Concepts\n- Monthly trip count: How many trips started in each calendar month.\n  - why: Every seasonal comparison in this project is built from it.\n  - verdict: in use, one table holds it for all three systems.\n  - links: Trip definition (counted under), Shared twelve months (limited to)\n- Test rental: A rental of under a minute made to check that a bike works, not a real ride.\n  - why: Northgate keeps them in its data and has many in summer.\n  - verdict: open, we do not yet know whether Northgate's short rentals are tests."
   },
   {
    "id": "C003",
@@ -236,13 +420,26 @@
     "need": "",
     "why": "",
     "how": "",
-    "means": "New stations are not why summer is busier, so the seasonal rise looks like real rider behaviour."
+    "means": "New stations are not why summer is busier, so the seasonal rise looks like real rider behaviour.",
+    "background": ""
    },
    "touched": null,
+   "filed": 1772442000.0,
+   "waiting_since": null,
+   "unblocks": {
+    "cards": [],
+    "more": 0,
+    "goals": [
+     {
+      "id": "D3",
+      "text": "A short note says which seasonal patterns appear in all three datasets and which in only some. (assumed)"
+     }
+    ]
+   },
    "ruled_out": true,
    "learned": [],
    "summary": "Check whether new stations opening during the year account for the summer rise in trips, by recounting using only stations open all twelve months.",
-   "body": "## Do\nCheck whether new stations opening during the year account for the summer rise in trips, by recounting using only stations open all twelve months.\n\n## Done when\n- The recount exists, and the Result says whether the summer rise is still there.\n\n## Inputs\ncards/scratch/C002/monthly_counts.csv\n\n## Outputs\ncards/scratch/C003/fixed_stations.csv\n\n## Result\nRuled out: station growth does not explain the summer rise, because the rise is still there when only stations open all year are counted.\n\n- The recount exists: met, cards/scratch/C003/fixed_stations.csv.\n- The Result says whether the rise is still there: met, it is, in all three datasets.\n\nNot checked: nothing known.\n\n## For you\nWhat this means: New stations are not why summer is busier, so the seasonal rise looks like real rider behaviour."
+   "body": "## Do\nCheck whether new stations opening during the year account for the summer rise in trips, by recounting using only stations open all twelve months.\n\n## Done when\n- The recount exists, and the Result says whether the summer rise is still there.\n\n## Inputs\ncards/scratch/C002/monthly_counts.csv\n\n## Outputs\ncards/scratch/C003/fixed_stations.csv\n\n## Result\nRuled out: station growth does not explain the summer rise, because the rise is still there when only stations open all year are counted.\n\n- The recount exists: met, cards/scratch/C003/fixed_stations.csv.\n- The Result says whether the rise is still there: met, it is, in all three datasets.\n\nNot checked: nothing known.\n\n## For you\nWhat this means: New stations are not why summer is busier, so the seasonal rise looks like real rider behaviour.\n\n## Concepts\n- Station growth: New docking stations opening during the year, which adds trips on its own.\n  - why: It could make summer look busy just because more stations exist by then.\n  - verdict: ruled out, the summer rise stays when only stations open all year are counted.\n  - links: Seasonal swing (could inflate), Fixed-station recount (tested by)"
   },
   {
    "id": "C004",
@@ -280,9 +477,27 @@
     "need": "",
     "why": "",
     "how": "",
-    "means": ""
+    "means": "",
+    "background": ""
    },
    "touched": null,
+   "filed": 1772442000.0,
+   "waiting_since": null,
+   "unblocks": {
+    "cards": [
+     {
+      "id": "C006",
+      "title": "Seasonal swing per dataset"
+     }
+    ],
+    "more": 0,
+    "goals": [
+     {
+      "id": "D2",
+      "text": "Each dataset has a seasonal swing figure (busiest month divided by quietest), computed the same way."
+     }
+    ]
+   },
    "ruled_out": false,
    "learned": [],
    "summary": "Summarize what now works, how to try it, what is rough and what is worth reading.",
@@ -292,11 +507,15 @@
    "id": "C005",
    "title": "Align the trip definition across datasets",
    "status": "todo",
-   "column": "next",
+   "column": "later",
    "priority": "P2",
    "human": false,
-   "depends_on": [],
-   "waiting_on": [],
+   "depends_on": [
+    "C008"
+   ],
+   "waiting_on": [
+    "C008"
+   ],
    "spawned_by": "C002",
    "effort": "standard",
    "attempts": "0",
@@ -310,7 +529,7 @@
    "result": "",
    "why_dropped": "",
    "wave": 2,
-   "depth": 0,
+   "depth": 1,
    "outputs": [
     "cards/scratch/C005/northgate_aligned.csv"
    ],
@@ -320,9 +539,22 @@
     "need": "",
     "why": "",
     "how": "",
-    "means": ""
+    "means": "",
+    "background": ""
    },
    "touched": null,
+   "filed": 1772446320.0,
+   "waiting_since": null,
+   "unblocks": {
+    "cards": [],
+    "more": 0,
+    "goals": [
+     {
+      "id": "D2",
+      "text": "Each dataset has a seasonal swing figure (busiest month divided by quietest), computed the same way."
+     }
+    ]
+   },
    "ruled_out": false,
    "learned": [],
    "summary": "Recount trips in Northgate with the 60-second minimum the other two datasets use, and say how much the monthly counts change.",
@@ -362,9 +594,22 @@
     "need": "",
     "why": "",
     "how": "",
-    "means": ""
+    "means": "",
+    "background": ""
    },
    "touched": null,
+   "filed": 1772449080.0,
+   "waiting_since": null,
+   "unblocks": {
+    "cards": [],
+    "more": 0,
+    "goals": [
+     {
+      "id": "D2",
+      "text": "Each dataset has a seasonal swing figure (busiest month divided by quietest), computed the same way."
+     }
+    ]
+   },
    "ruled_out": false,
    "learned": [],
    "summary": "For each dataset, divide the busiest month's trips by the quietest month's, and compare the three figures.",
@@ -400,13 +645,21 @@
     "need": "",
     "why": "",
     "how": "",
-    "means": ""
+    "means": "",
+    "background": ""
    },
    "touched": null,
+   "filed": 1772448720.0,
+   "waiting_since": null,
+   "unblocks": {
+    "cards": [],
+    "more": 0,
+    "goals": []
+   },
    "ruled_out": true,
    "learned": [],
    "summary": "Join daily temperature to the trip counts and check how much of the seasonal pattern it explains.",
-   "body": "## Do\nJoin daily temperature to the trip counts and check how much of the seasonal pattern it explains.\n\n## Result\n(worker fills this in: not run, dropped)\n\n## Notes\n- 2026-03-02 dropped: the goal is to compare seasonal patterns across datasets, not to explain them. Moved to the brief's Later list if wanted."
+   "body": "## Do\nJoin daily temperature to the trip counts and check how much of the seasonal pattern it explains.\n\n## Result\n(worker fills this in: not run, dropped)\n\n## Notes\n- 2026-03-02 dropped: the goal is to compare seasonal patterns across datasets, not to explain them. Moved to the brief's Later list if wanted.\n\n## Concepts\n- Weather adjustment: Explaining the monthly pattern with daily temperature and rain.\n  - why: Weather is the obvious reason summer is busier.\n  - verdict: ruled out, the goal is to compare the pattern across systems, not to explain it.\n  - links: Seasonal swing (would explain)"
   },
   {
    "id": "C008",
@@ -438,18 +691,37 @@
     "need": "Tell me whether Northgate's one-minute rentals are real trips or bike tests.",
     "why": "If they are tests, Northgate's summer looks busier than it is and the comparison is unfair.",
     "how": "Open Northgate's data notes page and read its line about trips; about 5 minutes.",
-    "means": ""
+    "means": "",
+    "background": "We are comparing how bike use rises and falls through the year in three cities' public trip data. The monthly counts for all three are done. Northgate's data keeps rentals shorter than a minute, while the other two leave them out, and Northgate has many of them in summer. Once you answer, Northgate is recounted the same way as the others if they are tests, and the busiest-to-quietest comparison goes ahead."
    },
    "touched": null,
+   "filed": 1772449140.0,
+   "waiting_since": 1772449140.0,
+   "unblocks": {
+    "cards": [
+     {
+      "id": "C005",
+      "title": "Align the trip definition across datasets"
+     }
+    ],
+    "more": 0,
+    "goals": [
+     {
+      "id": "D2",
+      "text": "Each dataset has a seasonal swing figure (busiest month divided by quietest), computed the same way."
+     }
+    ]
+   },
    "ruled_out": false,
    "learned": [],
    "summary": "Read Northgate's dataset documentation and say whether rentals under a minute are meant to count as trips.",
-   "body": "## For you\nWhat I need: Tell me whether Northgate's one-minute rentals are real trips or bike tests.\nWhy it matters: If they are tests, Northgate's summer looks busier than it is and the comparison is unfair.\nHow: Open Northgate's data notes page and read its line about trips; about 5 minutes.\n\n## Do\nRead Northgate's dataset documentation and say whether rentals under a minute are meant to count as trips.\n\n## Done when\n- The answer says yes or no, and quotes the documentation line it rests on.\n\n## Result\n(worker fills this in when it finishes: first line is the outcome)"
+   "body": "## For you\nWhat I need: Tell me whether Northgate's one-minute rentals are real trips or bike tests.\nWhy it matters: If they are tests, Northgate's summer looks busier than it is and the comparison is unfair.\nHow: Open Northgate's data notes page and read its line about trips; about 5 minutes.\nBackground: We are comparing how bike use rises and falls through the year in three cities' public trip data. The monthly counts for all three are done. Northgate's data keeps rentals shorter than a minute, while the other two leave them out, and Northgate has many of them in summer. Once you answer, Northgate is recounted the same way as the others if they are tests, and the busiest-to-quietest comparison goes ahead.\n\n## Do\nRead Northgate's dataset documentation and say whether rentals under a minute are meant to count as trips.\n\n## Done when\n- The answer says yes or no, and quotes the documentation line it rests on.\n\n## Result\n(worker fills this in when it finishes: first line is the outcome)"
   }
  ],
  "files": {
   "cards/BRIEF.md": "view/f1.js",
   "cards/STATUS.md": "view/f2.js",
+  "cards/CONCEPTS.md": "view/f6.js",
   "cards/scratch/C001/inventory.md": "view/f3.js",
   "cards/scratch/C002/monthly_counts.csv": "view/f4.js",
   "cards/scratch/C003/fixed_stations.csv": "view/f5.js",
