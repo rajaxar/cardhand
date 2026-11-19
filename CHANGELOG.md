@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0
+
+What you will see differently:
+
+- **A dashboard that reads in plain words.** Cards that need you now say what is wanted, why it matters and the first step
+  with a time estimate, instead of showing the working notes agents wrote for each other. Finished cards can add one line on
+  what the result means for the project.
+- **Road to done.** The Plan tab is now a list of your brief's goals, each marked met or not, with how many cards are done and
+  open and the next card on each. Mark a goal `[met]` in the brief and it ticks.
+- **An overview that says when it is out of date.** The Overview tab lists the cards that closed after it was written, and
+  the agent is told to rewrite it once five have closed (`accept` says so).
+- **Cards can name the goal they serve** with `new --for D1`, so the dashboard can group work by goal.
+- **Light and dark themes**, a keyboard help panel, and Learned is now "What we found".
+- **`check` catches more**: a card that needs you but has no plain ask, and a For you line that contains a card id or a file
+  path (a person will not know either).
+- **Worker rules updated.** Existing projects pick up the new rules and dashboard the next time any command runs after you
+  update the plugin; your own rules below the marker line in `RULES.md` are kept.
+- Free checks now also confirm that every key the dashboard reads is in the status file (`tests/check.py`).
+
 ## 0.2.0
 
 First public version.

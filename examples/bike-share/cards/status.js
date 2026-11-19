@@ -1,26 +1,58 @@
 window.CARDS_STATUS = {
  "schema": 2,
- "updated": 1795026714.526382,
+ "updated": 1795123134.425248,
  "project": "bike-share",
  "goal": [
   "Compare three open bike-share trip datasets (Harbor City, Northgate, Lakeside) for seasonal patterns, and say which seasonal effects hold in all three."
  ],
  "done_when": [
-  "D1: One table gives monthly trip counts for each dataset over the same twelve months.",
+  "[met] D1: One table gives monthly trip counts for each dataset over the same twelve months.",
   "D2: Each dataset has a seasonal swing figure (busiest month divided by quietest), computed the same way.",
   "D3: A short note says which seasonal patterns appear in all three datasets and which in only some. (assumed)"
  ],
  "counts": {
-  "todo": 2,
+  "todo": 3,
   "doing": 0,
   "review": 0,
   "done": 4,
   "blocked": 0,
   "dropped": 1
  },
- "high_total": 5,
+ "high_total": 6,
  "high_closed": 4,
- "checkpoint": null,
+ "checkpoint": {
+  "id": "C008",
+  "title": "Confirm what Northgate's one-minute rentals are"
+ },
+ "goals": [
+  {
+   "id": "D1",
+   "text": "One table gives monthly trip counts for each dataset over the same twelve months.",
+   "met": true,
+   "open": 0,
+   "done": 2,
+   "next": []
+  },
+  {
+   "id": "D2",
+   "text": "Each dataset has a seasonal swing figure (busiest month divided by quietest), computed the same way.",
+   "met": false,
+   "open": 3,
+   "done": 0,
+   "next": [
+    "C006",
+    "C008"
+   ]
+  },
+  {
+   "id": "D3",
+   "text": "A short note says which seasonal patterns appear in all three datasets and which in only some. (assumed)",
+   "met": false,
+   "open": 0,
+   "done": 1,
+   "next": []
+  }
+ ],
  "wave": 2,
  "waves": [
   {
@@ -35,7 +67,7 @@ window.CARDS_STATUS = {
    "summary": null,
    "done": 0,
    "dropped": 1,
-   "total": 3
+   "total": 4
   }
  ],
  "later": [
@@ -48,17 +80,18 @@ window.CARDS_STATUS = {
  "stale_minutes": 30,
  "overview": {
   "text": "# Overview\n\n## What we are trying to do\nWe have trip records from three bike-share systems and want to know whether they all rise and fall with the seasons by the same amount, or whether one system behaves differently.\n\n## How we are doing\nThe first wave is finished: we know what each dataset holds and we have month-by-month trip counts for all three. One important card is left: measuring the seasonal swing for each system. The answer is close, but not yet trustworthy.\n\n## What we have learned\nAll three systems are busiest in summer and quietest in winter, though Lakeside is flatter than the other two. Adding stations explains very little of the summer rise. One system counts very short test rentals as trips, which may inflate its numbers.\n\n## What we have tried, by area\n- Data: inventoried the three datasets and counted trips per month. Open: make the three trip definitions match.\n- Analysis: tested whether new stations explain the summer rise (they do not). Open: measure the swing per system.\n\n## Ruled out\n- Station growth as the cause of the summer rise.\n- Adding weather data: it would explain the swing, but not how it differs between systems.\n\n## What happens next\nMeasure the seasonal swing for each system, then, if time allows, align the trip definitions so the comparison is fair. After that we write up whether Lakeside really is flatter.\n",
-  "updated": 1795015316.9044366,
+  "updated": 1795123014.1375864,
   "stale": false,
   "closed": 0,
-  "placeholder": false
+  "placeholder": false,
+  "since": []
  },
  "areas": [
   {
    "name": "data",
-   "total": 4,
+   "total": 5,
    "done": 2,
-   "open": 1
+   "open": 2
   },
   {
    "name": "analysis",
@@ -114,11 +147,18 @@ window.CARDS_STATUS = {
     "cards/scratch/C001/inventory.md"
    ],
    "area": "data",
+   "for_goal": "D1",
+   "for_you": {
+    "need": "",
+    "why": "",
+    "how": "",
+    "means": "Only two of the three systems count trips the same way, so the comparison may need adjusting."
+   },
    "touched": null,
    "ruled_out": false,
    "learned": [],
    "summary": "For each dataset, list the columns, the date range and how a trip is defined in its docs.",
-   "body": "## Do\nFor each dataset, list the columns, the date range and how a trip is defined in its docs.\n\n## Done when\n- Each dataset has one line for columns, date range and trip definition.\n\n## Outputs\ncards/scratch/C001/inventory.md\n\n## Result\nAll three datasets cover the same twelve months, but only two define a trip as \"a rental of at least 60 seconds\".\n\n- Each dataset has one line for columns, date range and trip definition: met, see cards/scratch/C001/inventory.md.\n\nNot checked: whether the docs match how the data was actually exported."
+   "body": "## Do\nFor each dataset, list the columns, the date range and how a trip is defined in its docs.\n\n## Done when\n- Each dataset has one line for columns, date range and trip definition.\n\n## Outputs\ncards/scratch/C001/inventory.md\n\n## Result\nAll three datasets cover the same twelve months, but only two define a trip as \"a rental of at least 60 seconds\".\n\n- Each dataset has one line for columns, date range and trip definition: met, see cards/scratch/C001/inventory.md.\n\nNot checked: whether the docs match how the data was actually exported.\n\n## For you\nWhat this means: Only two of the three systems count trips the same way, so the comparison may need adjusting."
   },
   {
    "id": "C002",
@@ -149,6 +189,13 @@ window.CARDS_STATUS = {
     "cards/scratch/C002/monthly_counts.csv"
    ],
    "area": "data",
+   "for_goal": "D1",
+   "for_you": {
+    "need": "",
+    "why": "",
+    "how": "",
+    "means": ""
+   },
    "touched": null,
    "ruled_out": false,
    "learned": [],
@@ -184,11 +231,18 @@ window.CARDS_STATUS = {
     "cards/scratch/C003/fixed_stations.csv"
    ],
    "area": "analysis",
+   "for_goal": "D3",
+   "for_you": {
+    "need": "",
+    "why": "",
+    "how": "",
+    "means": "New stations are not why summer is busier, so the seasonal rise looks like real rider behaviour."
+   },
    "touched": null,
    "ruled_out": true,
    "learned": [],
    "summary": "Check whether new stations opening during the year account for the summer rise in trips, by recounting using only stations open all twelve months.",
-   "body": "## Do\nCheck whether new stations opening during the year account for the summer rise in trips, by recounting using only stations open all twelve months.\n\n## Done when\n- The recount exists, and the Result says whether the summer rise is still there.\n\n## Inputs\ncards/scratch/C002/monthly_counts.csv\n\n## Outputs\ncards/scratch/C003/fixed_stations.csv\n\n## Result\nRuled out: station growth does not explain the summer rise, because the rise is still there when only stations open all year are counted.\n\n- The recount exists: met, cards/scratch/C003/fixed_stations.csv.\n- The Result says whether the rise is still there: met, it is, in all three datasets.\n\nNot checked: nothing known."
+   "body": "## Do\nCheck whether new stations opening during the year account for the summer rise in trips, by recounting using only stations open all twelve months.\n\n## Done when\n- The recount exists, and the Result says whether the summer rise is still there.\n\n## Inputs\ncards/scratch/C002/monthly_counts.csv\n\n## Outputs\ncards/scratch/C003/fixed_stations.csv\n\n## Result\nRuled out: station growth does not explain the summer rise, because the rise is still there when only stations open all year are counted.\n\n- The recount exists: met, cards/scratch/C003/fixed_stations.csv.\n- The Result says whether the rise is still there: met, it is, in all three datasets.\n\nNot checked: nothing known.\n\n## For you\nWhat this means: New stations are not why summer is busier, so the seasonal rise looks like real rider behaviour."
   },
   {
    "id": "C004",
@@ -221,6 +275,13 @@ window.CARDS_STATUS = {
    "depth": 3,
    "outputs": [],
    "area": "",
+   "for_goal": "",
+   "for_you": {
+    "need": "",
+    "why": "",
+    "how": "",
+    "means": ""
+   },
    "touched": null,
    "ruled_out": false,
    "learned": [],
@@ -254,6 +315,13 @@ window.CARDS_STATUS = {
     "cards/scratch/C005/northgate_aligned.csv"
    ],
    "area": "data",
+   "for_goal": "D2",
+   "for_you": {
+    "need": "",
+    "why": "",
+    "how": "",
+    "means": ""
+   },
    "touched": null,
    "ruled_out": false,
    "learned": [],
@@ -289,6 +357,13 @@ window.CARDS_STATUS = {
     "cards/scratch/C006/swing.md"
    ],
    "area": "analysis",
+   "for_goal": "D2",
+   "for_you": {
+    "need": "",
+    "why": "",
+    "how": "",
+    "means": ""
+   },
    "touched": null,
    "ruled_out": false,
    "learned": [],
@@ -320,11 +395,56 @@ window.CARDS_STATUS = {
    "depth": 0,
    "outputs": [],
    "area": "data",
+   "for_goal": "",
+   "for_you": {
+    "need": "",
+    "why": "",
+    "how": "",
+    "means": ""
+   },
    "touched": null,
    "ruled_out": true,
    "learned": [],
    "summary": "Join daily temperature to the trip counts and check how much of the seasonal pattern it explains.",
    "body": "## Do\nJoin daily temperature to the trip counts and check how much of the seasonal pattern it explains.\n\n## Result\n(worker fills this in: not run, dropped)\n\n## Notes\n- 2026-03-02 dropped: the goal is to compare seasonal patterns across datasets, not to explain them. Moved to the brief's Later list if wanted."
+  },
+  {
+   "id": "C008",
+   "title": "Confirm what Northgate's one-minute rentals are",
+   "status": "todo",
+   "column": "you",
+   "priority": "P1",
+   "human": true,
+   "depends_on": [],
+   "waiting_on": [],
+   "spawned_by": "C002",
+   "effort": "light",
+   "attempts": "0",
+   "batch": "",
+   "tags": [],
+   "started": null,
+   "finished": null,
+   "outcome": "",
+   "do": "Read Northgate's dataset documentation and say whether rentals under a minute are meant to count as trips.",
+   "done_when": "- The answer says yes or no, and quotes the documentation line it rests on.",
+   "result": "",
+   "why_dropped": "",
+   "wave": 2,
+   "depth": 0,
+   "outputs": [],
+   "area": "data",
+   "for_goal": "D2",
+   "for_you": {
+    "need": "Tell me whether Northgate's one-minute rentals are real trips or bike tests.",
+    "why": "If they are tests, Northgate's summer looks busier than it is and the comparison is unfair.",
+    "how": "Open Northgate's data notes page and read its line about trips; about 5 minutes.",
+    "means": ""
+   },
+   "touched": null,
+   "ruled_out": false,
+   "learned": [],
+   "summary": "Read Northgate's dataset documentation and say whether rentals under a minute are meant to count as trips.",
+   "body": "## For you\nWhat I need: Tell me whether Northgate's one-minute rentals are real trips or bike tests.\nWhy it matters: If they are tests, Northgate's summer looks busier than it is and the comparison is unfair.\nHow: Open Northgate's data notes page and read its line about trips; about 5 minutes.\n\n## Do\nRead Northgate's dataset documentation and say whether rentals under a minute are meant to count as trips.\n\n## Done when\n- The answer says yes or no, and quotes the documentation line it rests on.\n\n## Result\n(worker fills this in when it finishes: first line is the outcome)"
   }
  ],
  "files": {

@@ -30,18 +30,18 @@ CAPS = [
     ("start skill body", 5500),
     ("run skill body", 7000),
     ("status skill body", 700),
-    ("generated RULES.md", 1800),
+    ("generated RULES.md", 2000),  # D-037: room for the For you rule
     ("BRIEF template", 1500),
     ("status plus check output", 600),
     ("one-card claim output", 500),
-    ("worker prompt plus RULES", 2200),
+    ("worker prompt plus RULES", 2500),
 ]
 HEAVIEST_CAP = 20000
 HARNESS_NOTE_CAP = 3000  # skills/run/references/harness.md: a note, not a second manual
 
 HARNESS_WORDS = ["haiku", "sonnet", "opus", "TaskStop", "CLAUDE_PLUGIN_ROOT", "subagent_type", "Claude"]
 CLAIM_PHRASES = ["thin orchestrator", "survives compaction", "unique"]
-CUT_FLAGS = [r"--cards(?![\w-])", r"--now(?![\w-])", r"--free(?![\w-])", r"--why(?![\w-])", r"(?m)(?:^|`)for:"]
+CUT_FLAGS = [r"--cards(?![\w-])", r"--now(?![\w-])", r"--free(?![\w-])", r"--why(?![\w-])"]  # `for:` was once a cut key; D-037 made it the goal link
 
 
 def read(path):
@@ -402,12 +402,20 @@ class Smoke:
         self.ok("status: a fresh overview is neither stale nor placeholder", fresh.get("stale") is False and fresh.get("placeholder") is False, str(fresh))
 
         write(filled, earlier)
-        for title in ("First", "Second"):
+        nudges = []
+        for title in ("First", "Second", "Third", "Fourth", "Fifth", "Sixth"):
             cid = self.new(cwd, title)
             self.finish(cwd, cid)
-            self.run(cwd, "accept", cid)
+            nudges.append(self.run(cwd, "accept", cid)[1])
+            if title == "Fifth":
+                rc, out = self.run(cwd, "check")
+                self.ok("check: an overview 5 cards behind is not flagged yet", "overview" not in out, out)
+        self.ok("accept: silent until 5 cards have closed since the overview", not any("rewrite" in n for n in nudges[:4]), str(nudges[:4]))
+        self.ok("accept: the 5th and 6th close print the rewrite line once each",
+                "rewrite cards/OVERVIEW.md: 5 cards closed since" in nudges[4] and "rewrite cards/OVERVIEW.md: 6 cards closed since" in nudges[5]
+                and nudges[5].count("rewrite") == 1, str(nudges[4:]))
         rc, out = self.run(cwd, "check")
-        self.ok("check: cards closed since the overview was written are flagged", "overview  stale: 2 cards closed since it was last written" in out, out)
+        self.ok("check: an overview more than 5 closed cards behind is flagged", "overview  stale: 6 cards closed since it was last written" in out, out)
         stale = overview_json()
         self.ok("status: stale is true and placeholder is false", stale.get("stale") is True and stale.get("placeholder") is False, str(stale))
 
@@ -416,6 +424,102 @@ class Smoke:
         self.ok("check: one section still at the init text is flagged", "overview  placeholder: still the init text" in out and "stale" not in out, out)
         left = overview_json()
         self.ok("status: placeholder is true and stale is false", left.get("placeholder") is True and left.get("stale") is False, str(left))
+
+    def for_you(self, root):
+        cwd = self.project(root, "foryou")
+        brief = os.path.join(cwd, "cards", "BRIEF.md")
+        with open(brief, "w", encoding="utf-8") as f:
+            f.write("# Brief\n\n## Goal\nTest.\n\n## Done when\n- D1: First thing works.\n- [met] D2: Second thing works.\n- D3 (assumed) Third thing works.\n")
+        rc, out = self.run(cwd, "new", "Bad goal", "--for", "D9")
+        self.ok("new --for refuses a goal the brief does not list", rc != 0 and "D1" in out, out)
+        a = self.new(cwd, "Build it", "--for", "d1", "--priority", "P0")
+        b = self.new(cwd, "Build more", "--for", "D1", "--after", a)
+        c = self.new(cwd, "Check it", "--for", "D2")
+        h = self.new(cwd, "Pick a name", "--human", "--for", "D3")
+        self.ok("new --for writes the key, upper-cased", re.search(r"(?m)^for: D1$", self.text(cwd, a)) is not None, self.text(cwd, a)[:300])
+        self.ok("new --human writes a For you template", all(x in self.text(cwd, h) for x in ("## For you", "What I need:", "Why it matters:", "How:")), self.text(cwd, h)[:400])
+        rc, out = self.run(cwd, "check")
+        self.ok("check: a human card with no What I need line is flagged", "foryou  %s" % h in out, out)
+        self.run(cwd, "status")
+        data = json.loads(read(os.path.join(cwd, "cards", "status.json")))
+        row = {r["id"]: r for r in data["cards"]}
+        self.ok("status.json: an unfilled template reads as empty strings", row[h]["for_you"] == {"need": "", "why": "", "how": "", "means": ""}, str(row[h]["for_you"]))
+        self.ok("status.json: for_goal per card", row[a]["for_goal"] == "D1" and row[h]["for_goal"] == "D3" and row[c]["for_goal"] == "D2", str([row[x]["for_goal"] for x in (a, b, c, h)]))
+        path = self.card(cwd, h)
+        text = read(path)
+        text = re.sub(r"(?s)## For you\n.*?\n\n", "## For you\nWhat I need: Pick a name for the tool.\nWhy it matters: The name goes on the first release.\nHow: Choose one of the three on the list; about 2 minutes.\n\n", text, count=1)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        rc, out = self.run(cwd, "check")
+        self.ok("check: a filled For you clears the flag", "foryou" not in out, out)
+        self.run(cwd, "status")
+        data = json.loads(read(os.path.join(cwd, "cards", "status.json")))
+        row = {r["id"]: r for r in data["cards"]}
+        self.ok("status.json: for_you holds the three lines", row[h]["for_you"]["need"] == "Pick a name for the tool." and row[h]["for_you"]["how"].startswith("Choose one") and row[h]["for_you"]["why"].startswith("The name"), str(row[h]["for_you"]))
+        self.ok("STATUS.md: Needs you shows the plain need", "Pick a name for the tool." in read(os.path.join(cwd, "cards", "STATUS.md")))
+        goals = {g["id"]: g for g in data.get("goals", [])}
+        self.ok("status.json: goals lists each D line", sorted(goals) == ["D1", "D2", "D3"] and goals["D1"]["text"] == "First thing works." and goals["D3"]["text"] == "(assumed) Third thing works.", str(data.get("goals"))[:300])
+        self.ok("status.json: [met] sets met on its goal only", [goals[x]["met"] for x in ("D1", "D2", "D3")] == [False, True, False], str(goals))
+        self.ok("status.json: goal counts and next in pick order", goals["D1"]["open"] == 2 and goals["D1"]["done"] == 0 and goals["D1"]["next"] == [a, b], str(goals["D1"]))
+        self.run(cwd, "claim", a)
+        self.finish(cwd, a)
+        self.set_result(cwd, a, "Built.\nmet: yes\nNot checked: nothing known.\n\n## For you\nWhat this means: The first thing now works end to end.")
+        self.run(cwd, "accept", a)
+        self.run(cwd, "status")
+        data = json.loads(read(os.path.join(cwd, "cards", "status.json")))
+        goals = {g["id"]: g for g in data["goals"]}
+        row = {r["id"]: r for r in data["cards"]}
+        self.ok("status.json: a closed card moves from open to done", goals["D1"]["open"] == 1 and goals["D1"]["done"] == 1 and goals["D1"]["next"] == [b], str(goals["D1"]))
+        self.ok("status.json: What this means is read on a finished card and its Result stays clean",
+                row[a]["for_you"]["means"] == "The first thing now works end to end." and "What this means" not in row[a]["result"], str(row[a]["for_you"]) + row[a]["result"][:200])
+        # overview.since: cards closed after OVERVIEW.md was last written, newest first
+        ov = os.path.join(cwd, "cards", "OVERVIEW.md")
+        past = time.time() - 3600
+        os.utime(ov, (past, past))
+        self.run(cwd, "status")
+        since = json.load(open(os.path.join(cwd, "cards", "status.json")))["overview"].get("since")
+        self.ok("status.json: overview.since lists closed cards with id, title and means", since == [{"id": a, "title": "Build it", "means": "The first thing now works end to end."}], str(since))
+        os.utime(ov, None)
+        self.run(cwd, "status")
+        since = json.load(open(os.path.join(cwd, "cards", "status.json")))["overview"].get("since")
+        self.ok("status.json: overview.since is empty after a rewrite", since == [], str(since))
+        # a blocked worker card counts as needing the person
+        self.run(cwd, "claim", c)
+        self.set_fm(cwd, c, "status", "blocked")
+        rc, out = self.run(cwd, "check")
+        self.ok("check: a blocked card with no What I need line is flagged", "foryou  %s" % c in out, out)
+        # a card naming a goal the brief later dropped
+        self.set_fm(cwd, b, "for", "D7")
+        rc, out = self.run(cwd, "check")
+        self.ok("check: a card serving an unknown goal is flagged", "goal    %s serves D7" % b in out, out)
+        # For you lines are for a person: a card id or a file path in one is flagged
+        d = self.new(cwd, "Ask about it", "--human")
+        path = self.card(cwd, d)
+        text = re.sub(r"(?s)## For you\n.*?\n\n", "## For you\nWhat I need: Check the figure in %s.\nWhy it matters: The write-up cites results/trips.csv.\nHow: Look it over; about 3 minutes.\n\n" % a, read(path), count=1)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        rc, out = self.run(cwd, "check")
+        self.ok("check: a For you line with a card id is flagged", "foryou  %s" % d in out and "card id %s" % a in out, out)
+        self.ok("check: a For you line with a file path is flagged", "file path results/trips.csv" in out, out)
+        text = re.sub(r"(?s)## For you\n.*?\n\n", "## For you\nWhat I need: Check the busiest-month figure.\nWhy it matters: The write-up leans on it; and/or the chart.\nHow: Look it over, about 3 minutes (P1 level).\n\n", read(path), count=1)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        rc, out = self.run(cwd, "check")
+        self.ok("check: plain For you lines are not flagged for jargon", "has the card id" not in out and "has the file path" not in out, out)
+        # a version change refreshes the worker rules and the dashboard, and keeps the project's own rules
+        rules = os.path.join(cwd, "cards", "RULES.md")
+        old = re.sub(r"version \d+\.\d+\.\d+", "version 0.0.1", read(rules), count=1).replace("## Learned lines", "## Old learned lines") + "\nProject rule: keep it short.\n"
+        with open(rules, "w", encoding="utf-8") as f:
+            f.write(old)
+        dash = os.path.join(cwd, "cards", "dashboard.html")
+        with open(dash, "w", encoding="utf-8") as f:
+            f.write("<!-- cards-dashboard v0 -->old")
+        rc, out = self.run(cwd, "status")
+        now = read(rules)
+        version = re.search(r'(?m)^VERSION\s*=\s*"([^"]+)"', read(CARDS)).group(1)
+        self.ok("status: an older RULES.md is refreshed to the current version", now.startswith("<!-- cards rules, version %s -->" % version), now[:80])
+        self.ok("status: the project's own rules below the marker survive a refresh", "Project rule: keep it short." in now, now[-120:])
+        self.ok("status: an older dashboard.html is replaced", "cards-dashboard v0 -->old" not in read(dash), read(dash)[:60])
 
     def fixes(self, root):
         cwd = self.project(root, "fixes")
@@ -485,10 +589,66 @@ class Smoke:
             try:
                 data = json.loads(read(os.path.join(cwd, "cards", "status.json")))
                 self.ok(name + ": status.json lists every card", sorted(c["id"] for c in data["cards"]) == ids, str(ids))
-                keys = ("overview", "areas", "key_path", "decisions")
+                keys = ("overview", "areas", "key_path", "decisions", "goals")
                 self.ok(name + ": status.json has the overview keys", all(k in data for k in keys), str(sorted(data)))
+                self.ok(name + ": status.json has the For you keys", all(set(c.get("for_you", {})) == {"need", "why", "how", "means"} and "for_goal" in c for c in data["cards"])
+                        and all(set(g) == {"id", "text", "met", "open", "done", "next"} for g in data["goals"]) and isinstance(data["overview"].get("since"), list), str(data["goals"])[:200])
+                problems = dashboard_contract(read(os.path.join(PLUGIN, "skills", "start", "scripts", "dashboard.html")), data)
+                self.ok(name + ": every key the dashboard reads is in status.json", not problems, "; ".join(problems))
+                src = re.search(r'"since": \[\{[^\n]*', read(CARDS))
+                self.ok(name + ": cards.py still writes id, title and means for each since entry", bool(src) and all(('"%s"' % k) in src.group(0) for k in ("id", "title", "means")), str(src))
             except (OSError, ValueError, KeyError) as err:
                 self.ok(name + ": status.json parses", False, str(err))
+
+# Names the dashboard's script calls on dates, arrays, strings and DOM nodes: not data keys.
+JS_BUILTINS = {"getAttribute", "focus", "classList", "contains", "length", "indexOf", "join", "map", "filter", "sort",
+               "forEach", "push", "slice", "split", "replace", "trim", "test", "scrollTop", "scrollLeft", "remove",
+               "getHours", "getMinutes", "getDate", "getFullYear", "getMonth", "getTime", "toFixed", "toLowerCase",
+               "toUpperCase", "toString", "some", "every", "concat", "reduce", "keys", "hasOwnProperty", "match"}
+
+
+def dashboard_contract(html, data):
+    """Every data key the dashboard reads must be in status.json. Returns the problems, empty when they agree."""
+    script = html[html.index("<script>"):]
+
+    def block(start, end="\nfunction "):
+        i = script.find(start)
+        return script[i:script.find(end, i + 1) if script.find(end, i + 1) > 0 else len(script)] if i >= 0 else ""
+
+    def found(pattern, text):
+        return {m.group(1) for m in re.finditer(pattern, text)} - JS_BUILTINS
+    read = {
+        "top": found(r"\bd\.(\w+)", script),
+        "card": found(r"\bc\.(\w+)", script) | found(r"\bc\[\"(\w+)\"\]", script) | found(r"\b[ab]\.(finished|status|outcome)\b", script)
+        | found(r"d\.cards\[i\]\.(\w+)", script) | found(r"byId\[[^\]]+\]\.(\w+)", script),
+        "wave": found(r"\bwv\.(\w+)", script),
+        "checkpoint": found(r"\bd\.checkpoint\.(\w+)", script),
+        "overview": found(r"\bo\.(\w+)", block("function renderOverview")),
+        "goal": found(r"\bg\.(\w+)", block("function renderPlan")),
+    }
+    fy = re.search(r'function fyOf.*?\[((?:"\w+",?\s*)+)\]', script, re.S)
+    emitted = {
+        "top": set(data),
+        "card": set().union(*(set(c) for c in data["cards"])) if data["cards"] else set(),
+        "wave": set().union(*(set(w) for w in data["waves"])) if data["waves"] else set(),
+        "checkpoint": {"id", "title"},  # null in a queue with no open summary
+        "overview": set(data.get("overview") or {}),
+        "goal": set().union(*(set(g) for g in data.get("goals", []))) if data.get("goals") else set(),
+    }
+    bad = []
+    for kind, names in read.items():
+        for name in sorted(names - emitted[kind]):
+            bad.append("the dashboard reads %s key `%s`, which status.json does not have" % (kind, name))
+    if fy:
+        want = set(re.findall(r"\w+", fy.group(1)))
+        have = set().union(*(set(c.get("for_you", {})) for c in data["cards"])) if data["cards"] else want
+        if want - have:
+            bad.append("the dashboard reads for_you keys %s, which status.json does not have" % sorted(want - have))
+    else:
+        bad.append("could not find the for_you key list (fyOf) in the dashboard")
+    if not read["goal"] or not read["overview"] or not read["card"]:
+        bad.append("contract check found no keys to compare (did the dashboard script change shape?)")
+    return bad
 
 
 def check_smoke():
@@ -497,7 +657,7 @@ def check_smoke():
     smoke = Smoke()
     root = tempfile.mkdtemp(prefix="cards-smoke-")
     try:
-        for section in (smoke.lifecycle, smoke.checkin, smoke.settings, smoke.robustness, smoke.overview, smoke.overview_flags, smoke.fixes, smoke.wave_counts, smoke.examples):
+        for section in (smoke.lifecycle, smoke.checkin, smoke.settings, smoke.robustness, smoke.overview, smoke.overview_flags, smoke.for_you, smoke.fixes, smoke.wave_counts, smoke.examples):
             try:
                 section(root)
             except Exception as err:  # a crash is a failure, and later sections still run

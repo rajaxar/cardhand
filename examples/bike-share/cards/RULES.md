@@ -1,4 +1,4 @@
-<!-- cards rules, version 0.2.0 -->
+<!-- cards rules, version 0.3.0 -->
 # Rules for a worker
 
 You were given one card, or a short batch. For each card:
@@ -19,6 +19,10 @@ You were given one card, or a short batch. For each card:
 6. Delete temporary files you made in scratch (browser profiles, caches, downloads). Keep only
    what someone might read.
 7. Set `status: review`, or `status: blocked` and say exactly what you need. Leave other keys alone.
-8. Reply with one line per card: `<id> <review|blocked> <card path>`.
+8. A person must act (you set `blocked`)? Add `## For you`, up to three short lines in plain words,
+   no card ids, paths or jargon: `What I need:` one sentence. `Why it matters:` one sentence.
+   `How:` the first step and a time estimate. On a finished card add `What this means:` one
+   sentence only if the result changes the human's picture of the project. Most cards skip it.
+9. Reply with one line per card: `<id> <review|blocked> <card path>`.
 
 <!-- Project rules go below this line. The tool never changes them. -->

@@ -5,12 +5,12 @@ Every card is one Markdown file in <root>/queue/. The files are the only state,
 so a new session resumes by running `status`. Standard library only.
 
   cards.py init [--learned]           create or refresh ./cards/ in the current project
-  cards.py new "Title" [options]      file a card and print its path (--checkin for a wave summary, --area for a label)
+  cards.py new "Title" [options]      file a card and print its path (--checkin for a wave summary, --area for a label, --for D1 for the goal it serves)
   cards.py ready [-n 4]               what to start now, in pick order
   cards.py depend ID [ID ...] --on X  make existing cards wait on X (--remove to undo)
   cards.py claim ID [ID ID]           mark cards doing and print the worker prompt (several ids: a batch)
   cards.py result ID                  print a card's Result, Proposed cards and Notes
-  cards.py accept ID                  check the Result and outputs, then mark done
+  cards.py accept ID                  check the Result and outputs, then mark done (says when OVERVIEW.md needs a rewrite)
   cards.py reject ID "what is missing"
   cards.py retry ID ["what happened"] [--force] a worker died: back to todo, partial Result kept (refused if recently claimed or changed)
   cards.py priority ID P0|P1|P2
@@ -28,7 +28,7 @@ import shutil
 import sys
 import time
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 STATUSES = ["todo", "doing", "review", "done", "blocked", "dropped"]
 CLOSED = {"done", "dropped"}
 PRIORITIES = {"P0": 0, "P1": 1, "P2": 2}
@@ -43,7 +43,10 @@ DECISION_CAP = 2000
 OVERVIEW_CAP = 20000
 PLACEHOLDER = "(worker fills this in"
 TEXT_KEYS = ("title", "area")  # free text: a ` #` in them is not a comment
-SECTIONS = ("Why", "Do", "Done when", "Inputs", "Outputs", "Result", "Proposed cards", "Notes", "Dropped")
+OVERVIEW_BEHIND = 5  # `accept` asks for a rewrite at this many closed cards; `check` flags an overview more than this far behind
+FOR_YOU_CAP = 400
+FOR_YOU = (("need", "What I need"), ("why", "Why it matters"), ("how", "How"), ("means", "What this means"))
+SECTIONS = ("Why", "Do", "For you", "Done when", "Inputs", "Outputs", "Result", "Proposed cards", "Notes", "Dropped")
 
 RULES_VERSION = "<!-- cards rules, version {} -->".format(VERSION)
 RULES_MARKER = "<!-- Project rules go below this line. The tool never changes them. -->"
@@ -68,7 +71,11 @@ You were given one card, or a short batch. For each card:
 6. Delete temporary files you made in scratch (browser profiles, caches, downloads). Keep only
    what someone might read.
 7. Set `status: review`, or `status: blocked` and say exactly what you need. Leave other keys alone.
-8. Reply with one line per card: `<id> <review|blocked> <card path>`.
+8. A person must act (you set `blocked`)? Add `## For you`, up to three short lines in plain words,
+   no card ids, paths or jargon: `What I need:` one sentence. `Why it matters:` one sentence.
+   `How:` the first step and a time estimate. On a finished card add `What this means:` one
+   sentence only if the result changes the human's picture of the project. Most cards skip it.
+9. Reply with one line per card: `<id> <review|blocked> <card path>`.
 """
 
 # The start skill turns this on for research and data work with `init --learned`.
@@ -234,6 +241,23 @@ class Card:
     @property
     def light(self):
         return self.get("effort", "standard") == "light"
+
+    @property
+    def goal(self):
+        return self.get("for")
+
+    def for_you(self):
+        """{need, why, how, means} from `## For you`; empty strings when a line is absent or still the template's placeholder."""
+        text = self.section("For you")
+        found = {}
+        for key, label in FOR_YOU:
+            match = re.search(r"^[ \t\-*]*{}:[ \t]*(.*)$".format(re.escape(label)), text, re.I | re.M)
+            value = match.group(1).strip() if match else ""
+            found[key] = "" if value.startswith("(") else value[:FOR_YOU_CAP]
+        return found
+
+    def needs_person(self):
+        return self.status not in CLOSED and (self.human or self.status == "blocked")
 
     def paths(self, name):
         found = []
@@ -426,7 +450,7 @@ def refresh_rules(root, quiet=False):
         return
     with open(path, encoding="utf-8") as f:
         text = f.read()
-    if text.startswith(RULES_VERSION + "\n"):
+    if text.startswith(top):
         return
     for marker in (RULES_MARKER, RULES_V0_MARKER):
         if marker in text:
@@ -484,6 +508,13 @@ def cmd_new(args, root):
         need(cards, dep)
     if args.spawned_by:
         need(cards, args.spawned_by)
+    args.goal = args.goal.strip().upper()
+    if args.goal:
+        known = [g["id"] for g in goal_rows(root, cards)]
+        if known and args.goal not in known:
+            die("no goal {} in BRIEF.md (its Done when lines are {})".format(args.goal, ", ".join(known)))
+        if not known:
+            warn("BRIEF.md has no `D1`... lines under Done when yet, so --for {} is not checked".format(args.goal))
     if args.checkin and args.human:
         die("a --checkin card is written by the orchestrator, so it cannot also be --human")
     if args.checkin and not args.after:
@@ -505,9 +536,14 @@ def cmd_new(args, root):
     area = " ".join(args.area.split())
     if area:
         front.append("area: " + area)
+    if args.goal:
+        front.append("for: " + args.goal)
     front += ["human: " + ("true" if args.human else "false"), "filed: " + now(), "started:", "finished:", "attempts: 0"]
     do = args.do or (CHECKIN_DO if args.checkin else "(what to do; leave the how to the worker)")
     body = "\n## Do\n{}\n\n## Done when\n{}\n".format(do, args.done_when or "(checkable lines)")
+    if args.human:
+        body = ("\n## For you\nWhat I need: (one plain sentence)\nWhy it matters: (one plain sentence)\n"
+                "How: (the first step and a time estimate)\n") + body
     if args.inputs:
         body += "\n## Inputs\n{}\n".format(args.inputs)
     if args.outputs:
@@ -692,6 +728,9 @@ def cmd_accept(args, root):
     print("{} done: {}".format(card.id, card.outcome()))
     if not re.search(r"^\W*not checked:", card.section("Result"), re.I | re.M):
         print("warning: {}'s Result has no `Not checked:` line.".format(card.id))
+    state = overview_state(root, cards)
+    if state and state[2] >= OVERVIEW_BEHIND:
+        print("rewrite {}: {} cards closed since".format(rel(os.path.join(root, "OVERVIEW.md"), root), state[2]))
     proposed = card.section("Proposed cards")
     if proposed and not proposed.startswith("(optional"):
         print("\nIt proposed cards. File the ones worth doing with `new ... --from {}`:\n{}".format(card.id, proposed))
@@ -761,6 +800,20 @@ def cmd_drop(args, root):
     print("{} dropped".format(card.id))
 
 
+_ID_WORD = re.compile(r"\b[A-Za-z]{1,3}-?\d{2,4}\b")
+_PATH_WORD = re.compile(r"(?:[\w.~-]+/)+[\w-]+\.\w+|\b[\w-]+\.(?:md|py|js|json|csv|txt|html|yaml|yml|ts|ipynb|png|sh)\b")
+
+
+def jargon_in(line, cards):
+    """The first card id or file path in a For you line, or ''."""
+    for found in _ID_WORD.finditer(line):
+        word = found.group(0)
+        if word.upper() in cards or re.fullmatch(r"[A-Z]-?\d{3,4}", word):
+            return "the card id " + word
+    found = _PATH_WORD.search(line)
+    return "the file path " + found.group(0) if found else ""
+
+
 def cmd_check(args, root):
     cards = load(root)
     quiet = True
@@ -785,8 +838,23 @@ def cmd_check(args, root):
             if dep not in cards:
                 print("broken  {} depends on {}, which does not exist".format(card.id, dep))
                 quiet = False
+    for card in sorted(cards.values(), key=lambda c: c.number):
+        if card.needs_person() and not card.for_you()["need"]:
+            print("foryou  {} needs the user but its `## For you` has no `What I need:` line".format(card.id))
+            quiet = False
+    for card in sorted(cards.values(), key=lambda c: c.number):
+        for label, line in card.for_you().items():
+            hit = jargon_in(line, cards)
+            if hit:
+                print("foryou  {} `## For you` ({}) has {}, which the user will not know: say it in plain words".format(card.id, label, hit))
+                quiet = False
+    known = [g["id"] for g in goal_rows(root, cards)]
+    for card in sorted(cards.values(), key=lambda c: c.number):
+        if known and card.goal and card.goal not in known:
+            print("goal    {} serves {}, which BRIEF.md does not list".format(card.id, card.goal))
+            quiet = False
     state = overview_state(root, cards)
-    if state and state[2]:
+    if state and state[2] > OVERVIEW_BEHIND:
         print("overview  stale: {} cards closed since it was last written".format(state[2]))
         quiet = False
     if state and state[3]:
@@ -809,6 +877,27 @@ def brief_lines(root, name):
         if line and not line.startswith("("):
             lines.append(line)
     return lines
+
+
+def goal_rows(root, cards):
+    """The brief's `D` lines as {id, text, met, open, done, next}. A line may start with `[met]` (before or after its id).
+    `next` is up to two open cards serving the goal, in pick order: running, in review or ready ones first, then
+    cards still waiting; each group by effective priority, then oldest."""
+    best = effective_priority(cards)
+    rows = []
+    for line in brief_lines(root, "Done when"):
+        match = re.match(r"^(\[met\]\s*)?(D\d+)\**[:.)\s-]*(\[met\]\s*)?(.*)$", line.lstrip("*").strip(), re.I)
+        if not match:
+            continue
+        gid = match.group(2).upper()
+        serving = [c for c in cards.values() if c.goal.upper() == gid]
+        opened = [c for c in serving if c.status not in CLOSED]
+        opened.sort(key=lambda c: (1 if c.status in ("todo", "blocked") and waiting_on(c, cards) else 0,
+                                   best.get(c.id, 1), parse_time(c.get("filed")) or 0, c.number))
+        rows.append({"id": gid, "text": match.group(4).strip(), "met": bool(match.group(1) or match.group(3)),
+                     "open": len(opened), "done": sum(1 for c in serving if c.status == "done"),
+                     "next": [c.id for c in opened[:2]]})
+    return rows
 
 
 def first_sentence(text, cap=160):
@@ -899,7 +988,7 @@ def status_data(root, cards):
             "result": card.section("Result")[:1500] if card.outcome() else "",
             "why_dropped": card.why_dropped() if card.status == "dropped" else "",
             "wave": waves[card.id], "depth": depth[card.id], "outputs": card.paths("Outputs"),
-            "area": card.get("area"),
+            "area": card.get("area"), "for_goal": card.goal, "for_you": card.for_you(),
             "touched": touched or None, "ruled_out": ruled_out(card), "learned": learned_lines(card),
             "summary": first_sentence(card.section("Why")) or first_sentence(card.section("Do")),
             "body": card.body.strip()[:BODY_CAP],
@@ -920,7 +1009,7 @@ def status_data(root, cards):
         "counts": {s: sum(1 for c in cards.values() if c.status == s) for s in STATUSES},
         "high_total": len(high), "high_closed": sum(1 for c in high if c.status in CLOSED),
         "checkpoint": {"id": checkpoint.id, "title": checkpoint.get("title")} if checkpoint else None,
-        "wave": current, "waves": wave_rows, "later": brief_lines(root, "Later"),
+        "goals": goal_rows(root, cards), "wave": current, "waves": wave_rows, "later": brief_lines(root, "Later"),
         "brief": "BRIEF.md" if os.path.exists(os.path.join(root, "BRIEF.md")) else None,
         "stale_minutes": STALE_MINUTES, "overview": overview_data(root, cards), "areas": area_rows(cards),
         "key_path": key_path(cards), "decisions": decisions_data(root), "cards": rows,
@@ -948,8 +1037,11 @@ def overview_data(root, cards):
     if state is None:
         return None
     text, written, closed, placeholder = state
+    since = sorted((c for c in cards.values() if (parse_time(c.get("finished")) or 0) > written),
+                   key=lambda c: (parse_time(c.get("finished")) or 0, c.number), reverse=True)
     return {"text": text[:OVERVIEW_CAP], "updated": written, "stale": closed > 0, "closed": closed,
-            "placeholder": placeholder}
+            "placeholder": placeholder,
+            "since": [{"id": c.id, "title": c.get("title"), "means": c.for_you()["means"]} for c in since]}
 
 
 def area_rows(cards):
@@ -1115,8 +1207,8 @@ def write_status(root, cards):
         minutes = int((time.time() - epoch) / 60)
         return "{}m ago".format(minutes) if minutes < 120 else "{}h ago".format(minutes // 60)
 
-    block("Needs you", ["- {} {}".format(c.id, c.get("title")) for c in humans] +
-          ["- {} blocked: {}".format(c.id, c.outcome() or c.get("title")) for c in by["blocked"]])
+    block("Needs you", ["- {} {}".format(c.id, c.for_you()["need"] or c.get("title")) for c in humans] +
+          ["- {} blocked: {}".format(c.id, c.for_you()["need"] or c.outcome() or c.get("title")) for c in by["blocked"]])
     now_rows = []
     for r in rows:
         if r["status"] == "doing":
@@ -1205,6 +1297,7 @@ def main():
     new.add_argument("--checkin", action="store_true", help="a wave summary card the orchestrator writes inline")
     new.add_argument("--tags", type=ids_list, default=[])
     new.add_argument("--area", default="", help="one short label that groups cards, such as data or design")
+    new.add_argument("--for", dest="goal", default="", help="the brief goal this card serves, such as D1")
     ready = sub.add_parser("ready")
     ready.add_argument("-n", type=int, help="free slots to fill (default: settings.json `slots`, or 4)")
     depend = sub.add_parser("depend", help="add or remove what existing cards wait on")

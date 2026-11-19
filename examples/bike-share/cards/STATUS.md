@@ -1,14 +1,14 @@
 # Status: bike-share
 
-## Wave 2: 0 of 3 done, 1 ruled out
+## Wave 2: 0 of 4 done, 1 ruled out
 
-Updated 2026-11-18 13:31. 7 cards: 2 todo, 4 done, 1 dropped.
+Updated 2026-11-19 16:18. 8 cards: 3 todo, 4 done, 1 dropped.
 Live view: open `dashboard.html` in this folder in a browser.
 Big picture in plain English: `OVERVIEW.md`.
 
 ## Needs you
 
-Nothing.
+- C008 Tell me whether Northgate's one-minute rentals are real trips or bike tests.
 
 ## Right now
 
@@ -17,7 +17,7 @@ Nothing.
 ## Plan
 
 - Wave 1: 4 of 4 done (summary C004)
-- Wave 2 (current): 0 of 3 done, 1 ruled out; open: C005, C006
+- Wave 2 (current): 0 of 4 done, 1 ruled out; open: C005, C006, C008
 
 ### Later
 

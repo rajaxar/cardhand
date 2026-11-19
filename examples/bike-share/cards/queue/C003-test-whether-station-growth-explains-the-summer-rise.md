@@ -7,6 +7,7 @@ effort: standard
 depends_on: [C002]
 spawned_by: human
 area: analysis
+for: D3
 human: false
 filed: 2026-03-02 09:00:00 +0000
 started: 2026-03-02 10:15:00 +0000
@@ -33,3 +34,6 @@ Ruled out: station growth does not explain the summer rise, because the rise is 
 - The Result says whether the rise is still there: met, it is, in all three datasets.
 
 Not checked: nothing known.
+
+## For you
+What this means: New stations are not why summer is busier, so the seasonal rise looks like real rider behaviour.
